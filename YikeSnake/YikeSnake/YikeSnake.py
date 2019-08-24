@@ -7,10 +7,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
-client = discord.Client()
 
-@client.event
-async def on_ready():
-    print(f'{client.user} is logged in')
+class Bot(discord.Client):
+    
+    async def on_ready(self):
+        print(f'{self.user} is logged in')
 
-client.run(token)
+    async def on_message(self, message):
+        if(message.author != self.user):
+            await message.channel.send(message.content)
+        
+bot = Bot()
+bot.run(token)
