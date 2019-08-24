@@ -7,7 +7,7 @@ client.on('ready', () => {
   console.log('Bot Online');
 });
 
-client.login('NjE0Mjg0NzAyOTk5OTA0MjU5.XV__BA.vo2yMDz-tuH50qO_L62T1FHlqRo');
+client.login('NjE0Mjg0NzAyOTk5OTA0MjU5.XWC7uQ.iPveiNrThNCLY_-GKfFh5b-XW0Q');
 
 client.on('message', message =>
 {
