@@ -1,0 +1,2 @@
+# Constants
+CMD = '\\yike'
