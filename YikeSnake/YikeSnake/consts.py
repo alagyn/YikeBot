@@ -1,2 +1,5 @@
 # Constants
-CMD = '\\yike'
+
+#Commands
+YIKE_CMD = '\\yike'
+UNYIKE_CMD = '\\unyike'
