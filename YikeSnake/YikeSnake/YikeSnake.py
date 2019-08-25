@@ -17,64 +17,85 @@ class Bot(discord.Client):
         print(f'{self.user} is logged in')
         for g in self.guilds:
             for m in g.members:
-                users.update({m.id : 0})
+                users.update({str(m.id) : 0})
 
     async def on_message(self, message):
         if(message.author != self.user):
             content = message.content.split(' ')
             send = message.channel.send
             channel = message.channel
-            done = False
-            updatedYikes = False
             userFound = False
 
             if(content[0][0] == '\\'):
                 
                 #Two operator commands: (cmd + @user)
-                if(len(content) == 2):
-                    cmd = content[0]
+                
+                cmd = content[0]
+                
+                #Update Yikes
+                if(re.fullmatch(consts.YIKE_CMD, cmd) or re.fullmatch(consts.UNYIKE_CMD, cmd)):
                     
-                    print('Got raw ID: ' + content[1])
+                    done = False
 
-                    if(re.fullmatch(consts.ID_FORMAT, content[1])):
+                    if(len(content) != 2 or not re.fullmatch(consts.ID_FORMAT, content[1])):
+                        await send('Usage:\n\\yike @user')
+                        done = True
+                    
+                    if(not done):
+                        deltaYike = 0
                         
+                        if(re.fullmatch(consts.YIKE_CMD, cmd)):
+                            deltaYike = 1
+                        else:
+                            deltaYike = -1
+
                         updateId = ''
 
                         if(content[1][2] == '!'):
                             updateId = content[1][3:-1]
                         else:
                             updateId = content[1][2:-1]
-                        
-                        print('Searching for id:' + updateId)
 
                         if(updateId in users):
-                            userFound = True
+                            users[updateId] += deltaYike
+
+                            update = True
+
+                            if(users[updateId] < 0):
+                                users[updateId] = 0
+                                await send('NO NEGATIVE YIKES ALLOWED\nYou cheeky monkey')
+                                update = False
+                            
+                            if(update):
+                                if(deltaYike > 0):
+                                    await send('<@!' + updateId + '>.... :yike:\nYou now have ' + str(users[updateId]) + ' yikes')
+                                else:
+                                    await send('<@!' + updateId + '>, you have been forgiven\nYou now have ' + str(users[updateId]) + ' yikes')
+
                         else:
+                            send('User not found')
                             print('ID not found: "' + updateId + '"')
-
-                        done = True
-
-                        if(userFound):
-                            print('Found: ' + updateId)
-                            #Add Yike
-                            if(re.fullmatch(consts.YIKE_CMD, cmd)):
-                                users[updateId] += 1
-                                updatedYikes = True
-                                
-                            #Remove Yike
-                            elif(re.fullmatch(consts.UNYIKE_CMD, cmd)):
-                                if(users[updateId] > 0):
-                                    users[updateId] -= 1
-                                    updatedYikes = True
                 
-                            if(updatedYikes):
-                                await send('@' + updateId + '... yikes\nYou now have ' + str(users[updateId]) + ' yikes')
+                elif(re.fullmatch(consts.HELP_CMD, cmd)):
+                    await send(consts.HELP_INFO)
+
+                elif(re.fullmatch(consts.LIST_CMD, cmd)):
+                    list = 'CURRENT YIKE TOTALS:\n'
+                    for m in message.guild.members:
+                        name = ''
+                        if(str(m.nick) != "None"):
+                            name = str(m.nick)
                         else:
-                            await send('User: "' + updateId + '" not found')
-                    else:
-                        print('Raw ID not valid: "' + content[1] + '"')
-                if(not done):
-                    await send('Invalid Command')
+                            name = str(m.name)
+
+                        list += "\t" + name + ": " + str(users[str(m.id)]) + "\n"
+
+                    await send(list)
+
+                #Invalid Command
+                else:
+                    await send('Invalid Command: Try \\help')
+
 
                 
 bot = Bot()
