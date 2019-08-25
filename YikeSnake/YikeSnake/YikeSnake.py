@@ -3,6 +3,7 @@ import os
 
 import discord
 import consts
+import re
 
 from dotenv import load_dotenv
 
@@ -14,9 +15,9 @@ class Bot(discord.Client):
     
     async def on_ready(self):
         print(f'{self.user} is logged in')
-    
-    async def userNotFound(channel, name):
-        await channel.send('User: "' + name + '" not found')
+        for g in self.guilds:
+            for m in g.members:
+                users.update({m.id : 0})
 
     async def on_message(self, message):
         if(message.author != self.user):
@@ -27,37 +28,53 @@ class Bot(discord.Client):
             updatedYikes = False
             userFound = False
 
-            if(len(content) == 2):
-                cmd = content[0]
-                name = content[1]
+            if(content[0][0] == '\\'):
                 
-
-                #Add Yike
-                if(cmd == consts.YIKE_CMD):
-                    if(name in users):
-                        users[name] += 1
-                        userFound = True
-                        updatedYikes = True
-                        
-                    done = True
+                #Two operator commands: (cmd + @user)
+                if(len(content) == 2):
+                    cmd = content[0]
                     
-                #Remove Yike
-                elif(cmd == consts.UNYIKE_CMD):
-                    if(name in users):
-                        if(users[name] > 0):
-                            users[name] -= 1
-                            updatedYikes = True
+                    print('Got raw ID: ' + content[1])
+
+                    if(re.fullmatch(consts.ID_FORMAT, content[1])):
+                        
+                        updateId = ''
+
+                        if(content[1][2] == '!'):
+                            updateId = content[1][3:-1]
+                        else:
+                            updateId = content[1][2:-1]
+                        
+                        print('Searching for id:' + updateId)
+
+                        if(updateId in users):
                             userFound = True
+                        else:
+                            print('ID not found: "' + updateId + '"')
 
-                    done = True
+                        done = True
+
+                        if(userFound):
+                            print('Found: ' + updateId)
+                            #Add Yike
+                            if(re.fullmatch(consts.YIKE_CMD, cmd)):
+                                users[updateId] += 1
+                                updatedYikes = True
+                                
+                            #Remove Yike
+                            elif(re.fullmatch(consts.UNYIKE_CMD, cmd)):
+                                if(users[updateId] > 0):
+                                    users[updateId] -= 1
+                                    updatedYikes = True
                 
-                if(updatedYikes):
-                    await send(name + '... yikes\nYou now have ' + str(users[name]) + ' yikes')
-                if(not userFound):
-                    userNotFound(channel, name)
-
-            if(not done):
-                await send('Invalid Command')
+                            if(updatedYikes):
+                                await send('@' + updateId + '... yikes\nYou now have ' + str(users[updateId]) + ' yikes')
+                        else:
+                            await send('User: "' + updateId + '" not found')
+                    else:
+                        print('Raw ID not valid: "' + content[1] + '"')
+                if(not done):
+                    await send('Invalid Command')
 
                 
 bot = Bot()
