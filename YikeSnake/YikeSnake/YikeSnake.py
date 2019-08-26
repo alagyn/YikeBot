@@ -29,6 +29,13 @@ class Bot(discord.Client):
             channel = message.channel
             userFound = False
 
+            def sendUsage(send, cmd):
+                if(re.fullmatch(consts.YIKE_CMD, cmd):
+                    await send(consts.YIKE_USAGE)
+                elif(re.fullmatch(consts.UNYIKE_CMD):
+                    await send(consts.UNYIKE_USAGE)
+                
+
             def updateYike(updateId, delta):
                 users[updateId] += delta
                 if(users[updateId] < 0):
@@ -37,6 +44,12 @@ class Bot(discord.Client):
                     return False
                 return True
                 
+            def getId(rawId):
+                if(rawId[2] == '!'):
+                    return rawId[3:-1]
+                else:
+                    return rawId[2:-1]
+
             if(len(content) > 0 and len(content[0]) > 0 and content[0][0] == '_'):
                 
                 cmd = content[0]
@@ -47,10 +60,7 @@ class Bot(discord.Client):
                     done = False
 
                     if(len(content) != 2 or len(content) != 3 or not re.fullmatch(consts.ID_FORMAT, content[1])):
-                        if(re.fullmatch(consts.YIKE_CMD, cmd)):
-                            await send('Usage:\n_yike @user [optional amnt]')
-                        else:
-                            await send('Usage:\n_unyike @user [optional amnt]')
+                        sendUsage(send, cmd)
                         done = True
                     
                     if(not done):
@@ -61,44 +71,53 @@ class Bot(discord.Client):
                         else:
                             deltaYike = -1
     
+                        goof = False
                         if(len(content) == 3):
-                            deltaYike *= parseInt(content[2)
+                            try:
+                                deltaYike *= int(content[2)
+                                
+                            except ValueError:
+                                sendUsage(send, cmd)
+                                goof = True
+                        
+                        if(not goof):
+                            updateId = getId(content[1)
 
-                        updateId = ''
+                            if(updateId in users):
+                                update = updateYike(updateId, deltaYike)
+                                
+                                if(update):
+                                    if(deltaYike > 0):
+                                        await send('<@!' + updateId + '>.... <:yike:' + consts.YIKE_ID + '>\nYou now have ' + str(users[updateId]) + ' yikes')
+                                    else:
+                                        await send('<@!' + updateId + '>, you have been forgiven\nYou now have ' + str(users[updateId]) + ' yikes')
 
-                        if(content[1][2] == '!'):
-                            updateId = content[1][3:-1]
-                        else:
-                            updateId = content[1][2:-1]
-
-                        if(updateId in users):
-                            update = updateYike(updateId, deltaYike)
-                            
-                            if(update):
-                                if(deltaYike > 0):
-                                    await send('<@!' + updateId + '>.... <:yike:' + consts.YIKE_ID + '>\nYou now have ' + str(users[updateId]) + ' yikes')
-                                else:
-                                    await send('<@!' + updateId + '>, you have been forgiven\nYou now have ' + str(users[updateId]) + ' yikes')
-
-                        else:
-                            send('User not found')
-                            print('ID not found: "' + updateId + '"')
-                
+                            else:
+                                send('User not found')
+                                print('ID not found: "' + updateId + '"')
+                    
                 elif(re.fullmatch(consts.HELP_CMD, cmd)):
                     await send(consts.HELP_INFO)
 
                 elif(re.fullmatch(consts.LIST_CMD, cmd)):
-                    list = 'CURRENT YIKE TOTALS:\n'
-                    for m in message.guild.members:
-                        name = ''
-                        if(str(m.nick) != "None"):
-                            name = str(m.nick)
-                        else:
-                            name = str(m.name)
+                    if(len(content) == 1):
+                        list = 'CURRENT YIKE TOTALS:\n'
+                        for m in message.guild.members:
+                            name = ''
+                            if(str(m.nick) != "None"):
+                                name = str(m.nick)
+                            else:
+                                name = str(m.name)
 
-                        list += "\t" + name + ": " + str(users[str(m.id)]) + "\n"
-
-                    await send(list)
+                            list += "\t" + name + ": " + str(users[str(m.id)]) + "\n"
+                        await send(list)
+                        
+                    elif(len(content) == 2):
+                        if(re.fullmatch(consts.ID_FORMAT, content[1])):
+                            id = getId(content[1])
+                            await send('<@!' + id + '> has ' + str(users[id]) + ' yikes'
+                    else:
+                        sendUsage(send, cmd)
                 elif(re.fullmatch(consts.BIG_YIKE_CMD, cmd)):
                     
                 #Invalid Command
