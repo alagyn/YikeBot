@@ -29,9 +29,15 @@ class Bot(discord.Client):
             channel = message.channel
             userFound = False
 
-            if(len(content) > 0 and len(content[0]) > 0 and content[0][0] == '_'):
+            def updateYike(updateId, delta):
+                users[updateId] += delta
+                if(users[updateId] < 0):
+                    users[updateId] = 0
+                    await send('NO NEGATIVE YIKES ALLOWED\nYou cheeky monkey')
+                    return False
+                return True
                 
-                #Two operator commands: (cmd + @user)
+            if(len(content) > 0 and len(content[0]) > 0 and content[0][0] == '_'):
                 
                 cmd = content[0]
                 
@@ -40,8 +46,11 @@ class Bot(discord.Client):
                     
                     done = False
 
-                    if(len(content) != 2 or not re.fullmatch(consts.ID_FORMAT, content[1])):
-                        await send('Usage:\n_yike @user')
+                    if(len(content) != 2 or len(content) != 3 or not re.fullmatch(consts.ID_FORMAT, content[1])):
+                        if(re.fullmatch(consts.YIKE_CMD, cmd)):
+                            await send('Usage:\n_yike @user [optional amnt]')
+                        else:
+                            await send('Usage:\n_unyike @user [optional amnt]')
                         done = True
                     
                     if(not done):
@@ -51,6 +60,9 @@ class Bot(discord.Client):
                             deltaYike = 1
                         else:
                             deltaYike = -1
+    
+                        if(len(content) == 3):
+                            deltaYike *= parseInt(content[2)
 
                         updateId = ''
 
@@ -60,14 +72,7 @@ class Bot(discord.Client):
                             updateId = content[1][2:-1]
 
                         if(updateId in users):
-                            users[updateId] += deltaYike
-
-                            update = True
-
-                            if(users[updateId] < 0):
-                                users[updateId] = 0
-                                await send('NO NEGATIVE YIKES ALLOWED\nYou cheeky monkey')
-                                update = False
+                            update = updateYike(updateId, deltaYike)
                             
                             if(update):
                                 if(deltaYike > 0):
@@ -94,6 +99,8 @@ class Bot(discord.Client):
                         list += "\t" + name + ": " + str(users[str(m.id)]) + "\n"
 
                     await send(list)
+                elif(re.fullmatch(consts.BIG_YIKE_CMD, cmd)):
+                    
                 #Invalid Command
                 else:
                     await send('Invalid Command: Try _help')

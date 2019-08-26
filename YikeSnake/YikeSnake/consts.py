@@ -1,16 +1,21 @@
 # Constants
 
-#Commands
+#RegEx
 YIKE_CMD = r"_(yike)"
 UNYIKE_CMD = r"_(unyike)"
 HELP_CMD = r"_(help)"
 LIST_CMD = r"_(list)"
 
-#Misc
 ID_FORMAT = r"<@!?\d+>"
-YIKE_ID = "614235819498143744"
+
+#ToDo
+#List + user
+#Test yike + amnt
+#FullYike to show current totals
+
 
 #Data
+YIKE_ID = "614235819498143744"
 HELP_INFO = "_yike @user\n" + \
             "\tAdds one Yike to user\n" + \
             "_unyike @user\n" + \
