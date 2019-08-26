@@ -19,6 +19,9 @@ class Bot(discord.Client):
             for m in g.members:
                 users.update({str(m.id) : 0})
 
+        game = discord.Game("_help")
+        await self.change_presence(status=discord.Status.online, activity=game)
+
     async def on_message(self, message):
         if(message.author != self.user):
             content = message.content.split(' ')
@@ -26,7 +29,7 @@ class Bot(discord.Client):
             channel = message.channel
             userFound = False
 
-            if(len(content) > 0 and len(content[0]) > 0 and content[0][0] == '\\'):
+            if(len(content) > 0 and len(content[0]) > 0 and content[0][0] == '_'):
                 
                 #Two operator commands: (cmd + @user)
                 
@@ -38,7 +41,7 @@ class Bot(discord.Client):
                     done = False
 
                     if(len(content) != 2 or not re.fullmatch(consts.ID_FORMAT, content[1])):
-                        await send('Usage:\n\\yike @user')
+                        await send('Usage:\n_yike @user')
                         done = True
                     
                     if(not done):
@@ -68,7 +71,7 @@ class Bot(discord.Client):
                             
                             if(update):
                                 if(deltaYike > 0):
-                                    await send('<@!' + updateId + '>.... :yike:\nYou now have ' + str(users[updateId]) + ' yikes')
+                                    await send('<@!' + updateId + '>.... <:yike:' + consts.YIKE_ID + '>\nYou now have ' + str(users[updateId]) + ' yikes')
                                 else:
                                     await send('<@!' + updateId + '>, you have been forgiven\nYou now have ' + str(users[updateId]) + ' yikes')
 
@@ -91,10 +94,9 @@ class Bot(discord.Client):
                         list += "\t" + name + ": " + str(users[str(m.id)]) + "\n"
 
                     await send(list)
-
                 #Invalid Command
                 else:
-                    await send('Invalid Command: Try \\help')
+                    await send('Invalid Command: Try _help')
 
 bot = Bot()
 bot.run(token)
