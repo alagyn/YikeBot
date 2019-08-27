@@ -30,15 +30,21 @@ class YikeSnake(discord.Client):
                         users.update({str(m.id) : 0})
 
     def readFile():
-        with open(consts.LOG) as f:
-            for line in f:
-                data = line.split(":");
-                users.update({data[0] : int(data[1])})
-
+        try:
+            with open(consts.LOG) as f:
+                for line in f:
+                    data = line.split(":");
+                    users.update({data[0] : int(data[1])})
+        except OSError:
+            pass
+    
     def writeFile():
-        with open(consts.LOG, 'w') as f:
-            for id in users:
-                f.write(id + ":" + str(users[id]) + "\n")
+        try:
+            with open(consts.LOG, 'w') as f:
+                for id in users:
+                    f.write(id + ":" + str(users[id]) + "\n")
+        except OSError:
+            pass
         
     async def on_message(self, message):
         if(message.author != self.user):
