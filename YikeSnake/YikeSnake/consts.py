@@ -18,10 +18,12 @@ UNYIKE_USAGE = "_unyike @user [optional amnt]\n" + \
                "\tRemoves one or more Yikes from a user\n"
 LIST_USAGE = "_list [optional @user]\n" + \
              "\tLists the total Yikes for every user on a server or an individual\n"
-
+QUOTE_USAGE = "_quote @user - quote\n" + \
+              "\tRecords a quote spoken by the subject"
 HELP_INFO = YIKE_USAGE + "\n" + UNYIKE_USAGE + "\n" + LIST_USAGE + "\n" + \
             "_help\n\tWhat do you think?"
 
 LOG = 'log.dat'
+QUOTES = 'quotes.dat'
 YIKE_ID = "614235819498143744"
 ADMIN_ID = "324725726475714560"

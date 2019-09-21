@@ -13,8 +13,18 @@ token = os.getenv('DISCORD_TOKEN')
 users = {}
 
 
-def writeQuote(param):
-    pass
+def writeQuote(subject, quote):
+    try:
+        with open(consts.QUOTES, mode="a") as f:
+            f.write(time.asctime() + '\n')
+            f.write(subject + "\n" + "-\n")
+            out = ""
+            for x in quote:
+                out = out + x + " "
+            f.write(out + "\n##\n")
+
+    except OSError:
+        print(time.asctime() + ": Error writing quote")
 
 
 def readFile():
@@ -24,16 +34,16 @@ def readFile():
                 data = line.split(":")
                 users.update({data[0]: int(data[1])})
     except OSError:
-        pass
+        print(time.asctime() + ": Error reading yike log")
 
 
 def writeFile():
     try:
         with open(consts.LOG, 'w') as f:
-            for id in users:
-                f.write(id + ":" + str(users[id]) + "\n")
+            for userId in users:
+                f.write(userId + ":" + str(users[userId]) + "\n")
     except OSError:
-        pass
+        print(time.asctime() + ": Error writing yike log")
 
 
 async def sendUsage(send, cmd):
@@ -41,6 +51,8 @@ async def sendUsage(send, cmd):
         await send("Usage:\n" + consts.YIKE_USAGE)
     elif re.fullmatch(consts.UNYIKE_CMD, cmd):
         await send("Usage:\n" + consts.UNYIKE_USAGE)
+    elif re.fullmatch(consts.QUOTE_CMD, cmd):
+        await send("Usage:\n" + consts.QUOTE_USAGE)
 
 
 async def updateYike(send, updateId, delta):
@@ -177,7 +189,9 @@ class YikeSnake(discord.Client):
                         await sendUsage(send, cmd)
 
                     if not err:
-                        writeQuote(content[3:])
+                        subject = getId(content[1])
+                        writeQuote('<!@' + subject + '>', content[3:])
+                        await send("Quote Recorded")
 
                 # Invalid Command
                 else:
