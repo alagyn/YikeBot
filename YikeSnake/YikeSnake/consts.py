@@ -19,9 +19,9 @@ UNYIKE_USAGE = "_unyike @user [optional amnt]\n" + \
 LIST_USAGE = "_list [optional @user]\n" + \
              "\tLists the total Yikes for every user on a server or an individual\n"
 QUOTE_USAGE = "_quote @user [quote]\n" + \
-              "\tRecords a quote spoken by the subject"
+              "\tRecords a quote spoken by the subject\n"
 GET_QUOTE_USAGE = "_getQuote @user\n" + \
-                  "\tReports all the quotes for the user"
+                  "\tReports all the quotes for the user\n"
 HELP_INFO = YIKE_USAGE + "\n" + UNYIKE_USAGE + "\n" + LIST_USAGE + "\n" + \
             QUOTE_USAGE + '\n' + GET_QUOTE_USAGE + '\n' +"_help\n\tWhat do you think?"
 

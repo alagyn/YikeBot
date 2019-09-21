@@ -74,6 +74,8 @@ async def sendUsage(send, cmd):
         await send("Usage:\n" + consts.UNYIKE_USAGE)
     elif re.fullmatch(consts.QUOTE_CMD, cmd):
         await send("Usage:\n" + consts.QUOTE_USAGE)
+    elif re.fullmatch(consts.GET_QUOTE_CMD, cmd):
+        await send("Usage:\n" + consts.GET_QUOTE_USAGE)
 
 
 async def updateYike(send, updateId, delta):
@@ -205,6 +207,7 @@ class YikeSnake(discord.Client):
                     err = False
                     if len(content) != 2:
                         err = True
+                        await sendUsage(send, cmd)
 
                     if not err:
                         await send(getQuotes(getId(content[1])))
