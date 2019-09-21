@@ -23,7 +23,7 @@ QUOTE_USAGE = "_quote @user - quote\n" + \
 HELP_INFO = YIKE_USAGE + "\n" + UNYIKE_USAGE + "\n" + LIST_USAGE + "\n" + \
             "_help\n\tWhat do you think?"
 
-LOG = 'log.dat'
-QUOTES = 'quotes.dat'
+LOG = './dat/log.dat'
+QUOTES = './dat/quotes.dat'
 YIKE_ID = "614235819498143744"
 ADMIN_ID = "324725726475714560"
