@@ -7,7 +7,7 @@ HELP_CMD = r"_(help)"
 LIST_CMD = r"_(list)"
 LOGOUT_CMD = r"_(logout)"
 QUOTE_CMD = r"_(quote)"
-
+GET_QUOTE_CMD = r'_(getQuote)'
 ID_FORMAT = r"<@!?\d+>"
 
 # Data
@@ -18,10 +18,12 @@ UNYIKE_USAGE = "_unyike @user [optional amnt]\n" + \
                "\tRemoves one or more Yikes from a user\n"
 LIST_USAGE = "_list [optional @user]\n" + \
              "\tLists the total Yikes for every user on a server or an individual\n"
-QUOTE_USAGE = "_quote @user - quote\n" + \
+QUOTE_USAGE = "_quote @user [quote]\n" + \
               "\tRecords a quote spoken by the subject"
+GET_QUOTE_USAGE = "_getQuote @user\n" + \
+                  "\tReports all the quotes for the user"
 HELP_INFO = YIKE_USAGE + "\n" + UNYIKE_USAGE + "\n" + LIST_USAGE + "\n" + \
-            "_help\n\tWhat do you think?"
+            QUOTE_USAGE + '\n' + GET_QUOTE_USAGE + '\n' +"_help\n\tWhat do you think?"
 
 LOG = './dat/log.dat'
 QUOTES = './dat/quotes.dat'

@@ -3,6 +3,7 @@ import os
 import re
 import sys
 import time
+import json
 
 import consts
 import discord
@@ -16,15 +17,28 @@ users = {}
 def writeQuote(subject, quote):
     try:
         with open(consts.QUOTES, mode="a") as f:
-            f.write(time.asctime() + '\n')
-            f.write(subject + "\n" + "-\n")
-            out = ""
+            out = ''
             for x in quote:
-                out = out + x + " "
-            f.write(out + "\n##\n")
+                out += x + " "
+
+            f.write(json.dumps([subject, time.asctime(), out]) + '\n')
 
     except OSError:
         print(time.asctime() + ": Error writing quote")
+
+
+def getQuotes(userId):
+    try:
+        with open(consts.QUOTES, mode='r') as f:
+            out = ''
+            for line in f:
+                quote = json.loads(line)
+                if quote[0] == userId:
+                    out += quote[1] + '\n' + quote[2] + '\n\n'
+
+            return out
+    except OSError:
+        print(time.asctime() + ': Error reading quotes')
 
 
 def readFile():
@@ -44,6 +58,13 @@ def writeFile():
                 f.write(userId + ":" + str(users[userId]) + "\n")
     except OSError:
         print(time.asctime() + ": Error writing yike log")
+
+
+def getId(rawId):
+    if rawId[2] == '!':
+        return rawId[3:-1]
+    else:
+        return rawId[2:-1]
 
 
 async def sendUsage(send, cmd):
@@ -84,16 +105,6 @@ class YikeSnake(discord.Client):
         if message.author != self.user:
             content = message.content.split(' ')
             send = message.channel.send
-
-            # Funcs -------
-
-            def getId(rawId):
-                if rawId[2] == '!':
-                    return rawId[3:-1]
-                else:
-                    return rawId[2:-1]
-
-            # -----------
 
             if len(content) > 0 and len(content[0]) > 0 and content[0][0] == '_':
 
@@ -177,22 +188,26 @@ class YikeSnake(discord.Client):
                         await discord.Client.close(self)
                         sys.exit(0)
 
+                # Write Quote
                 elif re.fullmatch(consts.QUOTE_CMD, cmd):
                     err = False
 
-                    if len(content) < 4:
-                        err = True
-                        await sendUsage(send, cmd)
-
-                    if content[2] != "-":
+                    if len(content) < 3:
                         err = True
                         await sendUsage(send, cmd)
 
                     if not err:
                         subject = getId(content[1])
-                        writeQuote('<!@' + subject + '>', content[3:])
+                        writeQuote(subject, content[2:])
                         await send("Quote Recorded")
+                # Get quotes
+                elif re.fullmatch(consts.GET_QUOTE_CMD, cmd):
+                    err = False
+                    if len(content) != 2:
+                        err = True
 
+                    if not err:
+                        await send(getQuotes(getId(content[1])))
                 # Invalid Command
                 else:
                     await send('Invalid Command: Try _help')
