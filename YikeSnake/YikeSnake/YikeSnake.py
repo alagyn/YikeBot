@@ -41,6 +41,28 @@ def getQuotes(userId):
         print(time.asctime() + ': Error reading quotes')
 
 
+def getGuildQuotes(guild):
+    try:
+        with open(consts.QUOTES, mode='r') as f:
+            out = ''
+            for line in f:
+                quote = json.loads(line)
+
+                for m in guild.members:
+                    if str(m.id) == quote[0]:
+                        name = ''
+                        if m.nick is not None:
+                            name = m.nick
+                        else:
+                            name = m.name
+
+                        out += quote[1] + '\n' + name + '\n' + quote[2] + '\n\n'
+                        break
+            return out
+    except OSError:
+        print(time.asctime() + ': Error reading quotes')
+
+
 def readFile():
     try:
         with open(consts.LOG) as f:
@@ -144,11 +166,19 @@ class YikeSnake(discord.Client):
                                 update = await updateYike(send, updateId, deltaYike)
 
                                 if update:
+                                    name = ''
+                                    for m in message.guild.members:
+                                        if updateId == str(m.id):
+                                            if m.nick is not None:
+                                                name = m.nick
+                                            else:
+                                                name = m.name
+                                            break
                                     if deltaYike > 0:
-                                        await send('<@!' + updateId + '>.... <:yike:' + consts.YIKE_ID +
+                                        await send(name + '....<:yike:' + consts.YIKE_ID +
                                                    '>\nYou now have ' + str(users[updateId]) + ' yikes')
                                     else:
-                                        await send('<@!' + updateId + '>, you have been forgiven\nYou now have ' + str(
+                                        await send(name + ', you have been forgiven\nYou now have ' + str(
                                             users[updateId]) + ' yikes')
 
                             else:
@@ -205,12 +235,26 @@ class YikeSnake(discord.Client):
                 # Get quotes
                 elif re.fullmatch(consts.GET_QUOTE_CMD, cmd):
                     err = False
-                    if len(content) != 2:
+                    if len(content) > 3:
                         err = True
                         await sendUsage(send, cmd)
 
                     if not err:
-                        await send(getQuotes(getId(content[1])))
+                        dat = ''
+                        if len(content) > 1 and re.fullmatch(consts.ID_FORMAT, content[1]):
+                            dat = getQuotes(getId(content[1]))
+                        else:
+                            dat = getGuildQuotes(message.guild)
+
+                        if len(content) > 1 and content[len(content) - 1] == '-f':
+                            with open(consts.Q_OUTPUT, mode='w') as f:
+                                f.write(dat)
+                            with open(consts.Q_OUTPUT, mode='rb') as f:
+                                await send(file=discord.File(f, filename='quotes.txt'))
+
+                        else:
+                            await send(dat)
+
                 # Invalid Command
                 else:
                     await send('Invalid Command: Try _help')
