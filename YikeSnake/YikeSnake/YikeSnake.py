@@ -21,7 +21,7 @@ def writeQuote(subject, quote):
             for x in quote:
                 out += x + " "
 
-            f.write(json.dumps([subject, time.asctime(), out]) + '\n')
+            f.write(json.dumps([subject, time.strftime("%a %x, %H:%M"), out]) + '\n')
 
     except OSError:
         print(time.asctime() + ": Error writing quote")
@@ -34,7 +34,7 @@ def getQuotes(userId):
             for line in f:
                 quote = json.loads(line)
                 if quote[0] == userId:
-                    out += quote[1] + '\n' + quote[2] + '\n\n'
+                    out += '(' + quote[1] + '):' + '\n' + quote[2] + '\n\n'
 
             return out
     except OSError:
@@ -56,7 +56,7 @@ def getGuildQuotes(guild):
                         else:
                             name = m.name
 
-                        out += quote[1] + '\n' + name + '\n' + quote[2] + '\n\n'
+                        out += name + ' (' + quote[1] + '):' + '\n' + quote[2] + '\n\n'
                         break
             return out
     except OSError:
