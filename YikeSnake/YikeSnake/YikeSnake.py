@@ -150,6 +150,12 @@ class YikeSnake(discord.Client):
                         else:
                             deltaYike = -1
 
+                        if deltaYike == -1:
+                            if message.author.id == 282227257454362634 or message.author.id == 460970685976543233\
+                                    or message.author.id == 437378570399252502:
+                                await send("Thou shalt not abuse the YikeBot")
+                                error = True
+
                         # Check for optional amnt
                         if len(content) == 3:
                             if content[2].isnumeric():
