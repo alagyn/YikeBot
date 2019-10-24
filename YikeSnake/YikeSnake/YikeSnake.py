@@ -44,7 +44,7 @@ def readDate(date):
     hour = date[4]
     minute = date[5]
 
-    return f'( {wday} {month}/{mday}/{year} {hour}:{minute} )'
+    return f'( {wday} {month}/{mday}/{year % 1000} {hour}:{minute} )'
 
 
 def writeQuote(subject, quote):
@@ -274,7 +274,7 @@ class YikeSnake(discord.Client):
                 # Get quotes
                 elif re.fullmatch(consts.GET_QUOTE_CMD, cmd):
                     err = False
-                    if len(content) > 3:
+                    if len(content) > 2:
                         err = True
                         await sendUsage(send, cmd)
 
