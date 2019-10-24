@@ -285,14 +285,10 @@ class YikeSnake(discord.Client):
                         else:
                             dat = getGuildQuotes(message.guild)
 
-                        if len(content) > 1 and content[len(content) - 1] == '-f':
-                            with open(consts.Q_OUTPUT, mode='w') as f:
-                                f.write(dat)
-                            with open(consts.Q_OUTPUT, mode='rb') as f:
-                                await send(file=discord.File(f, filename='quotes.txt'))
-
-                        else:
-                            await send(dat)
+                        with open(consts.Q_OUTPUT, mode='w') as f:
+                            f.write(dat)
+                        with open(consts.Q_OUTPUT, mode='rb') as f:
+                            await send(file=discord.File(f, filename='quotes.txt'))
 
                 # Invalid Command
                 else:
