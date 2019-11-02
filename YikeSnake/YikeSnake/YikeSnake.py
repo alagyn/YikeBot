@@ -7,6 +7,7 @@ import json
 
 import consts
 import discord
+import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -122,6 +123,18 @@ def getId(rawId):
         return rawId[2:-1]
 
 
+def getName(guild, userId):
+    name = ''
+    for m in guild.members:
+        if userId == str(m.id):
+            if m.nick is not None:
+                name = m.nick
+            else:
+                name = m.name
+            break
+    return name
+
+
 async def sendUsage(send, cmd):
     if re.fullmatch(consts.YIKE_CMD, cmd):
         await send("Usage:\n" + consts.YIKE_USAGE)
@@ -145,6 +158,26 @@ async def updateYike(send, updateId, delta):
 async def on_member_join(member):
     if str(member.id) not in users:
         users.update({str(member.id): 0})
+
+
+async def voteUnyike(send: discord.TextChannel.send) -> bool:
+    voter: discord.Message = await send(f'The legion shall decide your fate')
+
+    await voter.add_reaction(consts.THUMBS_UP)
+    await voter.add_reaction(consts.THUMBS_DOWN)
+
+    await asyncio.sleep(10)
+
+    cache_msg: discord.Message = discord.utils.get(bot.cached_messages, id=voter.id)
+
+    up = 0
+    down = 0
+    for x in cache_msg.reactions:
+        if x.emoji == consts.THUMBS_UP:
+            up = x.count
+        elif x.emoji == consts.THUMBS_DOWN:
+            down = x.count
+    return down + 1 >= up
 
 
 class YikeSnake(discord.Client):
@@ -178,16 +211,15 @@ class YikeSnake(discord.Client):
                         error = True
 
                     if not error:
+                        updateId = getId(content[1])
+
                         if re.fullmatch(consts.YIKE_CMD, cmd):
                             deltaYike = 1
                         else:
                             deltaYike = -1
-
-                        if deltaYike == -1:
-                            if message.author.id == 282227257454362634 or message.author.id == 460970685976543233\
-                                    or message.author.id == 437378570399252502:
-                                await send("Thou shalt not abuse the YikeBot")
-                                error = True
+                            error = await voteUnyike(send)
+                            if error:
+                                await send("The yike shall stand")
 
                         # Check for optional amnt
                         if len(content) == 3:
@@ -198,30 +230,24 @@ class YikeSnake(discord.Client):
                                 await sendUsage(send, cmd)
                                 error = True
 
+                        if updateId not in users:
+                            error = True
+
+                        name = getName(message.guild, updateId)
+
                         if not error:
-                            updateId = getId(content[1])
+                            update = await updateYike(send, updateId, deltaYike)
 
-                            if updateId in users:
-                                update = await updateYike(send, updateId, deltaYike)
-
-                                if update:
-                                    name = ''
-                                    for m in message.guild.members:
-                                        if updateId == str(m.id):
-                                            if m.nick is not None:
-                                                name = m.nick
-                                            else:
-                                                name = m.name
-                                            break
-                                    if deltaYike > 0:
-                                        await send(name + '....<:yike:' + consts.YIKE_ID +
-                                                   '>\nYou now have ' + str(users[updateId]) + ' yikes')
-                                    else:
-                                        await send(name + ', you have been forgiven\nYou now have ' + str(
-                                            users[updateId]) + ' yikes')
+                            if update:
+                                if deltaYike > 0:
+                                    await send(name + '....<:yike:' + consts.YIKE_ID +
+                                               '>\nYou now have ' + str(users[updateId]) + ' yikes')
+                                else:
+                                    await send(name + ', you have been forgiven\nYou now have ' + str(
+                                        users[updateId]) + ' yikes')
 
                             else:
-                                send('User not found')
+                                await send('User not found')
                                 print('ID not found: "' + updateId + '"')
 
                 elif re.fullmatch(consts.HELP_CMD, cmd):
