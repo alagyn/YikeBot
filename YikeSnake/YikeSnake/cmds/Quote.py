@@ -1,6 +1,5 @@
 # Quote.py
 
-from utils.cmdUtils import *
 from utils.userUtil import *
 from utils.fileIO import *
 
@@ -8,7 +7,7 @@ import re
 import discord
 
 
-async def createQuote(send, content):
+async def createQuote(bot, message, send, content):
     err = False
     cmd = content[0]
 
@@ -22,7 +21,7 @@ async def createQuote(send, content):
         await send("Quote Recorded")
 
 
-async def sendQuotes(send, message: discord.Message, content):
+async def sendQuotes(bot, send, message: discord.Message, content):
     err = False
     cmd = content[0]
 

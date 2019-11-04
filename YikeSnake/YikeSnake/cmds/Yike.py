@@ -1,30 +1,28 @@
 # Yike.py
 import re
 import discord
-import asyncio
 
-import consts
-import YikeSnake
-from utils.cmdUtils import sendUsage
+from consts import YIKE_CMD
+from consts import YIKE_ID
 from utils.userUtil import *
 
 
-async def yikeCmd(bot: YikeSnake, send, message: discord.Message, content):
-    error = True
+async def yikeCmd(bot, send, message: discord.Message, content):
     cmd = content[0]
+    error = False
     users = bot.users
 
+    updateId = getId(content[1])
+
+    if re.fullmatch(YIKE_CMD, cmd):
+        deltaYike = 1
+    else:
+        deltaYike = -1
+        error = await voteUnyike(bot, send)
+        if error:
+            await send("The yike shall stand")
+
     if not error:
-        updateId = getId(content[1])
-
-        if re.fullmatch(consts.YIKE_CMD, cmd):
-            deltaYike = 1
-        else:
-            deltaYike = -1
-            error = await voteUnyike(bot, send)
-            if error:
-                await send("The yike shall stand")
-
         # Check for optional amnt
         if len(content) == 3:
             if content[2].isnumeric():
@@ -44,7 +42,7 @@ async def yikeCmd(bot: YikeSnake, send, message: discord.Message, content):
 
             if update:
                 if deltaYike > 0:
-                    await send(name + '....<:yike:' + consts.YIKE_ID +
+                    await send(name + '....<:yike:' + YIKE_ID +
                                '>\nYou now have ' + str(users[updateId]) + ' yikes')
                 else:
                     await send(name + ', you have been forgiven\nYou now have ' + str(
@@ -55,26 +53,6 @@ async def yikeCmd(bot: YikeSnake, send, message: discord.Message, content):
                 print('ID not found: "' + updateId + '"')
 
 
-async def voteUnyike(bot, send: discord.TextChannel.send) -> bool:
-    voter: discord.Message = await send('The legion shall decide your fate')
-
-    await voter.add_reaction(consts.THUMBS_UP)
-    await voter.add_reaction(consts.THUMBS_DOWN)
-
-    await asyncio.sleep(10)
-
-    cache_msg: discord.Message = discord.utils.get(bot.cached_messages, id=voter.id)
-
-    up = 0
-    down = 0
-    for x in cache_msg.reactions:
-        if x.emoji == consts.THUMBS_UP:
-            up = x.count
-        elif x.emoji == consts.THUMBS_DOWN:
-            down = x.count
-    return down + 1 >= up
-
-
 async def updateYike(send, users, updateId, delta):
     users[updateId] += delta
     if users[updateId] < 0:
@@ -82,3 +60,23 @@ async def updateYike(send, users, updateId, delta):
         await send('NO NEGATIVE YIKES ALLOWED\nYou cheeky monkey')
         return False
     return True
+
+
+async def voteUnyike(cur: discord.Client, send: discord.TextChannel.send) -> bool:
+    voter: discord.Message = await send('The legion shall decide your fate')
+
+    await voter.add_reaction(THUMBS_UP)
+    await voter.add_reaction(THUMBS_DOWN)
+
+    await asyncio.sleep(10)
+
+    cache_msg: discord.Message = discord.utils.get(cur.cached_messages, id=voter.id)
+
+    up = 0
+    down = 0
+    for x in cache_msg.reactions:
+        if x.emoji == THUMBS_UP:
+            up = x.count
+        elif x.emoji == THUMBS_DOWN:
+            down = x.count
+    return down + 1 >= up

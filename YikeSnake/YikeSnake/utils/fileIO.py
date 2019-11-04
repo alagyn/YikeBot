@@ -1,6 +1,6 @@
 # fileIO.py
 
-from utils.timeUtils import *
+from .timeUtils import *
 import consts
 import json
 

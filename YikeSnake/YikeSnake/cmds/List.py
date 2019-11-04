@@ -1,13 +1,14 @@
 # List.py
 
-from utils.cmdUtils import *
 import re
-import consts
+from utils.userUtil import *
+from consts import ID_FORMAT
 
 
-async def listYikes(send, users, message, content):
+async def listYikes(send, bot, message, content):
     # List all
     cmd = content[0]
+    users = bot.users
 
     if len(content) == 1:
         nameList = 'CURRENT YIKE TOTALS:\n'
@@ -22,9 +23,9 @@ async def listYikes(send, users, message, content):
         await send(nameList)
     # list single
     elif len(content) == 2:
-        if re.fullmatch(consts.ID_FORMAT, content[1]):
+        if re.fullmatch(ID_FORMAT, content[1]):
             userId = getId(content[1])
-            await send('<@!' + userId + '> has ' + str(users[userId]) + ' yikes')
+            await send(f'{getName(message.guild, userId)} has {str(users[userId])} yikes')
         else:
             await sendUsage(send, cmd)
     else:

@@ -1,4 +1,3 @@
-# Constants
 
 # RegEx
 YIKE_CMD = r"_(yike)"
@@ -22,8 +21,8 @@ QUOTE_USAGE = "_quote @user [quote]\n" + \
               "\tRecords a quote spoken by the subject\n"
 GET_QUOTE_USAGE = "_getQuotes [optional @user]\n" + \
                   "\tReports all the quotes for server or user\n"
-HELP_INFO = YIKE_USAGE + "\n" + UNYIKE_USAGE + "\n" + LIST_USAGE + "\n" + \
-            QUOTE_USAGE + '\n' + GET_QUOTE_USAGE + '\n' + "_help\n\tWhat do you think?"
+HELP_USAGE = "_help\n" \
+             "\tWhat do you think?"
 
 Q_OUTPUT = './dat/out.txt'
 LOG = './dat/log.dat'
@@ -32,3 +31,4 @@ YIKE_ID = "614235819498143744"
 ADMIN_ID = "324725726475714560"
 THUMBS_UP = '\U0001F44D'
 THUMBS_DOWN = '\U0001F44E'
+
