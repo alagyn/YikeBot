@@ -4,7 +4,10 @@ import discord
 
 from consts import YIKE_CMD
 from consts import YIKE_ID
+from consts import THUMBS_DOWN
+from consts import THUMBS_UP
 from utils.userUtil import *
+from asyncio import sleep
 
 
 async def yikeCmd(bot, send, message: discord.Message, content):
@@ -29,7 +32,7 @@ async def yikeCmd(bot, send, message: discord.Message, content):
                 amnt = int(content[2])
                 deltaYike *= amnt
             else:
-                await sendUsage(send, cmd)
+                await bot.sendUsage(send, cmd)
                 error = True
 
         if updateId not in users:
@@ -68,7 +71,7 @@ async def voteUnyike(cur: discord.Client, send: discord.TextChannel.send) -> boo
     await voter.add_reaction(THUMBS_UP)
     await voter.add_reaction(THUMBS_DOWN)
 
-    await asyncio.sleep(10)
+    await sleep(10)
 
     cache_msg: discord.Message = discord.utils.get(cur.cached_messages, id=voter.id)
 
@@ -79,4 +82,5 @@ async def voteUnyike(cur: discord.Client, send: discord.TextChannel.send) -> boo
             up = x.count
         elif x.emoji == THUMBS_DOWN:
             down = x.count
-    return down + 1 >= up
+    # return down + 1 >= up
+    return down >= up

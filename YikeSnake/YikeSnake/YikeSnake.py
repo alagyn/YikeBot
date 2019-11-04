@@ -1,6 +1,6 @@
 # YikeSnake.py
 import os
-
+import sys
 import time
 import discord
 from utils import fileIO
@@ -19,25 +19,19 @@ class YikeSnake(discord.Client):
 
     async def adminLogout(self, message: discord.Message):
         if str(message.author.id).__eq__(ADMIN_ID):
-            fileIO.writeYikeLog(bot.users)
+            fileIO.writeYikeLog(self.users)
             print(time.asctime() + ': YikeLog Updated, Logging out')
             await self.change_presence(status=discord.Status.offline)
             await discord.Client.close(self)
             sys.exit(0)
 
-    async def helpOutput(self, send, message=None, content=None):
-        output = ''
-        for x in cmdList:
-            output += cmdList[x][USAGE]
-        await send(output)
-
     cmdList = dict(_yike=[YIKE_USAGE, Yike.yikeCmd], _unyike=[UNYIKE_USAGE, Yike.yikeCmd],
-                   _quote=[QUOTE_USAGE, Quote.createQuote], _getQuote=[GET_QUOTE_USAGE, Quote.sendQuotes],
-                   _list=[LIST_USAGE, List.listYikes], _help=[HELP_USAGE, helpOutput])
+                   _quote=[QUOTE_USAGE, Quote.createQuote], _getQuotes=[GET_QUOTE_USAGE, Quote.sendQuotes],
+                   _list=[LIST_USAGE, List.listYikes], _help=[HELP_USAGE, Help.helpOutput])
 
     def getCmd(self, cmd: str):
         if cmd in self.cmdList:
-            return cmdList[cmd][FUNC]
+            return self.cmdList[cmd][FUNC]
         else:
             return None
 
@@ -77,5 +71,5 @@ class YikeSnake(discord.Client):
                     await send('Invalid Command: Try _help')
 
 
-bot = YikeSnake()
-bot.run(token)
+curBot = YikeSnake()
+curBot.run(token)

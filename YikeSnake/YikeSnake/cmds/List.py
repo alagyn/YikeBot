@@ -29,4 +29,4 @@ async def listYikes(send, bot, message, content):
         else:
             await sendUsage(send, cmd)
     else:
-        await sendUsage(send, cmd)
+        await bot.sendUsage(send, cmd)

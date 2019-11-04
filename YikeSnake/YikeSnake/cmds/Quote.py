@@ -13,7 +13,7 @@ async def createQuote(bot, message, send, content):
 
     if len(content) < 3:
         err = True
-        await sendUsage(send, cmd)
+        await bot.sendUsage(send, cmd)
 
     if not err:
         subject = getId(content[1])
@@ -27,7 +27,7 @@ async def sendQuotes(bot, send, message: discord.Message, content):
 
     if len(content) > 2:
         err = True
-        await sendUsage(send, cmd)
+        await bot.sendUsage(send, cmd)
 
     if not err:
         if len(content) > 1 and re.fullmatch(consts.ID_FORMAT, content[1]):
