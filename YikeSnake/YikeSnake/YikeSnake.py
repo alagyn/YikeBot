@@ -11,6 +11,7 @@ from cmds import *
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
+#debug = os.getenv('DEBUG')
 
 
 # noinspection PyMethodMayBeStatic

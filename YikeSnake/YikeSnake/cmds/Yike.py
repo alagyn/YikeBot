@@ -8,6 +8,7 @@ from consts import THUMBS_DOWN
 from consts import THUMBS_UP
 from utils.userUtil import *
 from asyncio import sleep
+from utils.timeUtils import *
 
 
 async def yikeCmd(bot, send, message: discord.Message, content):
@@ -17,11 +18,17 @@ async def yikeCmd(bot, send, message: discord.Message, content):
 
     updateId = getId(content[1])
 
+    if updateId not in users:
+        error = True
+
+    fullName = getFullName(message.guild, updateId)
+    name = getName(message.guild, updateId)
+
     if re.fullmatch(YIKE_CMD, cmd):
         deltaYike = 1
     else:
         deltaYike = -1
-        error = await voteUnyike(bot, send)
+        error = await voteUnyike(bot, send, fullName, message.author.name)
         if error:
             await send("The yike shall stand")
 
@@ -35,11 +42,6 @@ async def yikeCmd(bot, send, message: discord.Message, content):
                 await bot.sendUsage(send, cmd)
                 error = True
 
-        if updateId not in users:
-            error = True
-
-        name = getName(message.guild, updateId)
-
         if not error:
             update = await updateYike(send, users, updateId, deltaYike)
 
@@ -47,6 +49,7 @@ async def yikeCmd(bot, send, message: discord.Message, content):
                 if deltaYike > 0:
                     await send(name + '....<:yike:' + YIKE_ID +
                                '>\nYou now have ' + str(users[updateId]) + ' yikes')
+                    print(f'{readDate(getCurrentTime())}: Yike of "{fullName}" initiated by {message.author.name}')
                 else:
                     await send(name + ', you have been forgiven\nYou now have ' + str(
                         users[updateId]) + ' yikes')
@@ -65,21 +68,32 @@ async def updateYike(send, users, updateId, delta):
     return True
 
 
-async def voteUnyike(cur: discord.Client, send: discord.TextChannel.send) -> bool:
+async def voteUnyike(cur: discord.Client, send: discord.TextChannel.send, name: str, initiator: str) -> bool:
     voter: discord.Message = await send('The legion shall decide your fate')
 
     await voter.add_reaction(THUMBS_UP)
     await voter.add_reaction(THUMBS_DOWN)
 
-    await sleep(45)
+    await sleep(10)
 
     cache_msg: discord.Message = discord.utils.get(cur.cached_messages, id=voter.id)
 
     up = 0
     down = 0
+    upVoters = ""
+    downVoters = ""
     for x in cache_msg.reactions:
         if x.emoji == THUMBS_UP:
             up = x.count
+            users = await x.users().flatten()
+            for u in users:
+                upVoters += u.name + '  '
         elif x.emoji == THUMBS_DOWN:
             down = x.count
+            users = await x.users().flatten()
+            for u in users:
+                downVoters += u.name + '  '
+
+    print(f'{readDate(getCurrentTime())}: Unyike of {name} initiated by {initiator}')
+    print(f'\tUpVotes: {upVoters}\n\tDownVotes: {downVoters}')
     return down + 1 >= up

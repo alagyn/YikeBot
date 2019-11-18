@@ -18,3 +18,12 @@ def getName(guild, userId):
                 name = m.name
             break
     return name
+
+
+def getFullName(guild, userId):
+    name = ''
+    for m in guild.members:
+        if userId == str(m.id):
+            name = m.name
+            break
+    return name
