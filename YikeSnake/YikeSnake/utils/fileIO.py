@@ -5,26 +5,26 @@ import consts
 import json
 
 
-def readYikeLog(users):
+def readYikeLog(log, users):
     try:
         with open(consts.LOG) as f:
             for line in f:
                 data = line.split(":")
                 users.update({data[0]: int(data[1])})
     except OSError:
-        print(time.asctime() + ": Error reading yike log")
+        log("Error reading yike log")
 
 
-def writeYikeLog(users):
+def writeYikeLog(log, users):
     try:
         with open(consts.LOG, 'w') as f:
             for userId in users:
                 f.write(userId + ":" + str(users[userId]) + "\n")
     except OSError:
-        print(time.asctime() + ": Error writing yike log")
+        log("Error writing yike log")
 
 
-def writeQuote(subject, quote):
+def writeQuote(log, subject, quote):
     try:
         with open(consts.QUOTES, mode="a") as f:
             out = ''
@@ -34,10 +34,10 @@ def writeQuote(subject, quote):
             curTime = getCurrentTime()
             f.write(json.dumps([subject, curTime, out]) + '\n')
     except OSError:
-        print(time.asctime() + ": Error writing quote")
+        log("Error writing quote")
 
 
-def getQuotes(userId):
+def getQuotes(log, userId):
     try:
         with open(consts.QUOTES, mode='r') as f:
             out = ''
@@ -48,10 +48,10 @@ def getQuotes(userId):
 
             return out
     except OSError:
-        print(time.asctime() + ': Error reading quotes')
+        log('Error reading quotes')
 
 
-def getGuildQuotes(guild):
+def getGuildQuotes(log, guild):
     try:
         with open(consts.QUOTES, mode='r') as f:
             out = ''
@@ -70,4 +70,4 @@ def getGuildQuotes(guild):
                         break
             return out
     except OSError:
-        print(time.asctime() + ': Error reading quotes')
+        log('Error reading quotes')

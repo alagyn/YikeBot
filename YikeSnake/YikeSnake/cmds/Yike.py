@@ -24,9 +24,16 @@ async def yikeCmd(bot, send, message: discord.Message, content):
     fullName = getFullName(message.guild, updateId)
     name = getName(message.guild, updateId)
 
-    if re.fullmatch(YIKE_CMD, cmd):
+    if len(message.channel.members) < len(message.guild.members) / 2:
+        bot.addOutputLog(f'Yike/Unyike audience too small, initiated by {message.author.name} in '
+                         f'{message.channel.name}')
+        error = True
+        await send('Oops, Yike commands are only available in channels visible to at least half the server')
+
+    deltaYike = 0
+    if not error and re.fullmatch(YIKE_CMD, cmd):
         deltaYike = 1
-    else:
+    elif not error:
         deltaYike = -1
         error = await voteUnyike(bot, send, fullName, message.author.name)
         if error:
@@ -48,15 +55,15 @@ async def yikeCmd(bot, send, message: discord.Message, content):
             if update:
                 if deltaYike > 0:
                     await send(name + '....<:yike:' + YIKE_ID +
-                               '>\nYou now have ' + str(users[updateId]) + ' yikes')
-                    print(f'{readDate(getCurrentTime())}: Yike of "{fullName}" initiated by {message.author.name}')
+                               f'>\nYou now have {str(users[updateId])} yikes')
+                    bot.addOutputLog(f'Yike of "{fullName}" initiated by "{message.author.name}"')
                 else:
                     await send(name + ', you have been forgiven\nYou now have ' + str(
                         users[updateId]) + ' yikes')
 
             else:
                 await send('User not found')
-                print('ID not found: "' + updateId + '"')
+                bot.addOutputLog(f'ID not found: "{updateId}"')
 
 
 async def updateYike(send, users, updateId, delta):
@@ -68,7 +75,7 @@ async def updateYike(send, users, updateId, delta):
     return True
 
 
-async def voteUnyike(cur: discord.Client, send: discord.TextChannel.send, name: str, initiator: str) -> bool:
+async def voteUnyike(cur, send: discord.TextChannel.send, name: str, initiator: str) -> bool:
     voter: discord.Message = await send('The legion shall decide your fate')
 
     await voter.add_reaction(THUMBS_UP)
@@ -94,6 +101,6 @@ async def voteUnyike(cur: discord.Client, send: discord.TextChannel.send, name: 
             for u in users:
                 downVoters += u.name + '  '
 
-    print(f'{readDate(getCurrentTime())}: Unyike of {name} initiated by {initiator}')
-    print(f'\tUpVotes: {upVoters}\n\tDownVotes: {downVoters}')
+    cur.addOutputLog(f'Unyike of {name} initiated by {initiator}')
+    cur.addOutputLog(f'\tUpVotes: {upVoters}\n\tDownVotes: {downVoters}')
     return down + 1 >= up
