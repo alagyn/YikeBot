@@ -17,7 +17,7 @@ async def createQuote(bot, message, send, content):
 
     if not err:
         subject = getId(content[1])
-        writeQuote(subject, content[2:])
+        writeQuote(bot.addOutputLog, subject, content[2:])
         await send("Quote Recorded")
 
 
@@ -31,9 +31,9 @@ async def sendQuotes(bot, send, message: discord.Message, content):
 
     if not err:
         if len(content) > 1 and re.fullmatch(consts.ID_FORMAT, content[1]):
-            dat = getQuotes(getId(content[1]))
+            dat = getQuotes(bot.addOutputLog, getId(content[1]))
         else:
-            dat = getGuildQuotes(message.guild)
+            dat = getGuildQuotes(bot.addOutputLog, message.guild)
 
         with open(consts.Q_OUTPUT, mode='w') as f:
             f.write(dat)

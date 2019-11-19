@@ -23,8 +23,8 @@ class YikeSnake(discord.Client):
     def addOutputLog(self, message: str):
         output = f'{timeUtils.readDate(timeUtils.getCurrentTime())}: {message}'
         if self.outputFile is not None:
-            with open(self.outputFile, mode='a') as f:
-                f.write(f'{output}\n')
+            with open(self.outputFile, mode='a') as log:
+                log.write(f'{output}\n')
         else:
             print(output)
 
