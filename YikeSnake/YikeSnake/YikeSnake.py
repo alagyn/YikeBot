@@ -19,6 +19,7 @@ debug = os.getenv('DEBUG')
 class YikeSnake(discord.Client):
     users = {}
     outputFile: str
+    waitTime: int
 
     def addOutputLog(self, message: str):
         output = f'{timeUtils.readDate(timeUtils.getCurrentTime())}: {message}'
@@ -88,7 +89,9 @@ if debug != '1':
     with open(logFile, mode='w') as f:
         f.write(f'Log Init at {timeUtils.readDate(timeUtils.getCurrentTime())}\n')
     curBot.outputFile = logFile
+    curBot.waitTime = DEF_WAIT_TIME
 else:
     curBot.outputFile = None
+    curBot.waitTime = DEBUG_WAIT_TIME
 
 curBot.run(token)

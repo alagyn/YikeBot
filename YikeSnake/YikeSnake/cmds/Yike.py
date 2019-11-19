@@ -19,51 +19,47 @@ async def yikeCmd(bot, send, message: discord.Message, content):
     updateId = getId(content[1])
 
     if updateId not in users:
-        error = True
+        bot.addOutputLog(f'ID not found: "{updateId}"')
+        await send('User not found')
+        return
 
     fullName = getFullName(message.guild, updateId)
     name = getName(message.guild, updateId)
 
-    if len(message.channel.members) < len(message.guild.members) / 2:
+    if checkChannel(message.channel):
         bot.addOutputLog(f'Yike/Unyike audience too small, initiated by {message.author.name} in '
-                         f'{message.channel.name}')
-        error = True
-        await send('Oops, Yike commands are only available in channels visible to at least half the server')
+                         f'{message.channel.name}. Message: "{message.content}"')
+        await send('Thou shalt not Yike in channels not visible to at least half the server')
+        return
 
     deltaYike = 0
-    if not error and re.fullmatch(YIKE_CMD, cmd):
+    if re.fullmatch(YIKE_CMD, cmd):
         deltaYike = 1
-    elif not error:
+    else:
         deltaYike = -1
-        error = await voteUnyike(bot, send, fullName, message.author.name)
-        if error:
+        if await voteUnyike(bot, send, fullName, message.author.name):
             await send("The yike shall stand")
+            return
 
-    if not error:
-        # Check for optional amnt
-        if len(content) == 3:
-            if content[2].isnumeric():
-                amnt = int(content[2])
-                deltaYike *= amnt
-            else:
-                await bot.sendUsage(send, cmd)
-                error = True
+    # Check for optional amnt
+    if len(content) == 3:
+        if content[2].isnumeric():
+            amnt = int(content[2])
+            deltaYike *= amnt
+        else:
+            await bot.sendUsage(send, cmd)
+            return
 
-        if not error:
-            update = await updateYike(send, users, updateId, deltaYike)
+    update = await updateYike(send, users, updateId, deltaYike)
 
-            if update:
-                if deltaYike > 0:
-                    await send(name + '....<:yike:' + YIKE_ID +
-                               f'>\nYou now have {str(users[updateId])} yikes')
-                    bot.addOutputLog(f'Yike of "{fullName}" initiated by "{message.author.name}"')
-                else:
-                    await send(name + ', you have been forgiven\nYou now have ' + str(
-                        users[updateId]) + ' yikes')
-
-            else:
-                await send('User not found')
-                bot.addOutputLog(f'ID not found: "{updateId}"')
+    if update:
+        if deltaYike > 0:
+            await send(name + '....<:yike:' + YIKE_ID +
+                       f'>\nYou now have {str(users[updateId])} yikes')
+            bot.addOutputLog(f'Yike of "{fullName}" initiated by "{message.author.name}"')
+        else:
+            await send(name + ', you have been forgiven\nYou now have ' + str(
+                users[updateId]) + ' yikes')
 
 
 async def updateYike(send, users, updateId, delta):
@@ -75,16 +71,19 @@ async def updateYike(send, users, updateId, delta):
     return True
 
 
+def checkChannel(channel) -> bool:
+    return len(channel.members) < len(channel.guild.members) / 2
+
+
 async def voteUnyike(cur, send: discord.TextChannel.send, name: str, initiator: str) -> bool:
     voter: discord.Message = await send('The legion shall decide your fate')
 
     await voter.add_reaction(THUMBS_UP)
     await voter.add_reaction(THUMBS_DOWN)
 
-    await sleep(10)
+    await sleep(cur.waitTime)
 
     cache_msg: discord.Message = discord.utils.get(cur.cached_messages, id=voter.id)
-
     up = 0
     down = 0
     upVoters = ""
