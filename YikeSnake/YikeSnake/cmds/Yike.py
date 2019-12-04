@@ -100,6 +100,6 @@ async def voteUnyike(cur, send: discord.TextChannel.send, name: str, initiator: 
             for u in users:
                 downVoters += u.name + '  '
 
-    cur.addOutputLog(f'Unyike of {name} initiated by {initiator}')
-    cur.addOutputLog(f'\tUpVotes: {upVoters}\n\tDownVotes: {downVoters}')
+    cur.addOutputLog(f'Unyike of {name} initiated by {initiator}'
+                     f'\tUpVotes: {upVoters}\n\tDownVotes: {downVoters}')
     return down + 1 >= up
