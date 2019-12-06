@@ -21,38 +21,43 @@ class Yike(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._last_member = None
-        self.message = None
+        self.message = [discord.Message]
+
+    async def cog_before_invoke(self, ctx):
+        self.message = []
 
     async def cog_after_invoke(self, ctx):
-        self.bot.lastMessage = self.message.id
+        self.bot.lastMessage = []
+        for x in self.message:
+            self.bot.lastMessage.append(x.id)
         self.bot.lastCmd = ctx.message.id
 
-        self.bot.writeYikeLog()
+        await self.bot.writeYikeLog()
 
     # YIKE
-    @commands.command(name="yike", help=YIKE_DESC)
+    @commands.command(name="yike", help=YIKE_DESC, brief='_yike <user> [amount]', usage='<user> [amount]')
     async def yike(self, ctx, user: discord.Member, amnt=1):
         if await self.checkChannel(ctx):
             return
 
         if amnt <= 0:
-            self.message = await ctx.send("Invalid amount")
+            self.message = [await ctx.send("Invalid amount")]
             return
 
         self.bot.users[str(user.id)] += amnt
         self.bot.addAdminLog(f'Yike of {user.name} initiated by {ctx.author.name} '
                              f'in channel {ctx.channel.name} : {ctx.message.content}')
-        self.message = await ctx.send(f'{user.display_name}... <:yike:{YIKE_EMOJI_ID}>\n'
-                                      f'You now have {self.bot.users[str(user.id)]} yikes')
+        self.message = [await ctx.send(f'{user.display_name}... <:yike:{YIKE_EMOJI_ID}>\n'
+                                       f'You now have {self.bot.users[str(user.id)]} yikes')]
 
     # UNYIKE
-    @commands.command(name="unyike", help=UNYIKE_USAGE)
+    @commands.command(name="unyike", help=UNYIKE_USAGE, brief='_unyike <user> [amount]', usage='<user> [amount]')
     async def unYike(self, ctx, user: discord.Member, amnt=1):
         if await self.checkChannel(ctx):
             return
 
-        if self.bot.users[user.id] == 0:
-            self.message = await ctx.send("NO NEGATIVE YIKES\nYou cheeky monkey")
+        if self.bot.users[str(user.id)] == 0:
+            self.message = [await ctx.send("NO NEGATIVE YIKES\nYou cheeky monkey")]
             return
 
         voter: discord.Message = await ctx.send("The legion shall decide your fate")
@@ -86,11 +91,11 @@ class Yike(commands.Cog):
         await cacheMsg.delete()
 
         if down + 1 >= up:
-            self.message = await ctx.send("The yike shall stand")
+            self.message = [await ctx.send("The yike shall stand")]
         else:
-            self.bot.users[ctx.author.id] -= amnt
-            self.message = await ctx.send(f"{user.display_name}, you have been forgiven\n"
-                                          f"you now have {str(self.bot.users[user.id])}")
+            self.bot.users[str(user.id)] -= amnt
+            self.message = [await ctx.send(f"{user.display_name}, you have been forgiven\n"
+                                           f"you now have {str(self.bot.users[user.id])}")]
 
     # Channel check
     async def checkChannel(self, ctx) -> bool:
@@ -98,11 +103,11 @@ class Yike(commands.Cog):
         if x:
             self.bot.addAdminLog(f'Yike/Unyike audience too small, initiated by {ctx.author.name} '
                                  f'in channel {ctx.channel.name} : "{ctx.message.content}"')
-            self.message = await ctx.send(AUDIENCE_ERROR)
+            self.message = [await ctx.send(AUDIENCE_ERROR)]
         return x
 
     # LIST
-    @commands.command(name="list", help=LIST_DESC)
+    @commands.command(name="list", help=LIST_DESC, brief='_list [user]', usage='[user]')
     async def list(self, ctx, user: typing.Optional[discord.User] = None):
         output = ''
 
@@ -112,9 +117,15 @@ class Yike(commands.Cog):
         else:
             output = f'{user.display_name} has {self.bot.users[str(user.id)]}'
 
-        self.message = await ctx.send(output)
+        self.message = [await ctx.send(output)]
 
     # Error handling
-    async def cog_command_error(self, ctx, error):
+    async def cog_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.BadArgument):
-            self.message = await ctx.send("Error")
+            await ctx.send_help()
+        else:
+            await ctx.send(error)
+
+
+def setup(bot):
+    bot.add_cog(Yike(bot))
