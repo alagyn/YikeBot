@@ -63,7 +63,8 @@ class Yike(commands.Cog):
         self.readYikeLog()
 
     # YIKE
-    @commands.command(name="yike", help=YIKE_DESC, aliases=['y'], brief='_yike <user> [amount]', usage='<user> [amount]')
+    @commands.command(name="yike", help=YIKE_DESC, aliases=['y'],
+                      brief='_yike <user> [amount]', usage='<user> [amount]')
     async def yike(self, ctx, user: discord.Member, amnt=1):
         if await self.checkChannel(ctx):
             return
@@ -79,7 +80,8 @@ class Yike(commands.Cog):
                                        f'You now have {self.yikeLog[user.id]} yikes')]
 
     # UNYIKE
-    @commands.command(name="unyike", help=UNYIKE_USAGE, aliases=['uy'], brief='_unyike <user> [amount]', usage='<user> [amount]')
+    @commands.command(name="unyike", help=UNYIKE_USAGE, aliases=['uy'],
+                      brief='_unyike <user> [amount]', usage='<user> [amount]')
     async def unYike(self, ctx, user: discord.Member, amnt=1):
         if await self.checkChannel(ctx):
             return
