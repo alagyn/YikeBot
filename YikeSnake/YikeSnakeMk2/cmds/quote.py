@@ -4,9 +4,12 @@ from discord.ext import commands
 import discord
 import json
 import typing
+import sys
 
 from utils.timeUtils import *
-from consts import *
+import yikeSnake
+
+from consts import QUOTE_LOG, REPLY_DELETE_TIME, Q_OUTPUT, ERROR_OUTPUT_MESSAGE
 
 Q_ID_IDX = 0
 Q_DATE_IDX = 1
@@ -18,7 +21,7 @@ MAX_MESSAGE_LEN = 1000
 
 class Quote(commands.Cog):
 
-    def __init__(self, bot):
+    def __init__(self, bot: yikeSnake.YikeSnake):
         self.message = [discord.Message]
         self.bot = bot
         self._last_member = None
@@ -118,11 +121,12 @@ class Quote(commands.Cog):
             with open(Q_OUTPUT, mode='rb') as f:
                 self.message = [await ctx.send(file=discord.File(f, filename=fileName))]
 
-    async def cog_command_error(self, ctx, error):
-        if isinstance(error, commands.CommandError):
-            await ctx.send_help()
+    async def cog_command_error(self, ctx: commands.Context, error):
+        if isinstance(error, commands.BadArgument):
+            self.message = [await ctx.send_help(ctx.command)]
         else:
-            await ctx.send(error)
+            self.message = [await ctx.send(ERROR_OUTPUT_MESSAGE)]
+            print(f'{error}\n\t{ctx.message.content}', file=sys.stderr)
 
 
 def setup(bot):

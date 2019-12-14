@@ -3,25 +3,25 @@
 from discord.ext import commands
 import discord
 from sys import exit
+import yikeSnake
 
 
 class Admin(commands.Cog):
 
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: yikeSnake.YikeSnake = bot
         self._last_member = None
 
     @commands.command(name='logout', hidden=True, aliases=['lo'])
     @commands.is_owner()
     async def logoutCmd(self, ctx):
-        await self.bot.writeYikeLog()
-        self.bot.addAdminLog('YikeLog Updated, Logging out')
+        self.bot.addAdminLog('Admin Logout')
         await ctx.message.delete()
         await self.bot.change_presence(status=discord.Status.offline)
-        await discord.Client.close(self.bot)
+        await self.bot.logout()
         exit(0)
 
-    @commands.command(name='reset', hidden=True)
+    @commands.command(name='reset', hidden=True, aliases=['r'])
     @commands.is_owner()
     async def reset(self, ctx: commands.Context):
         await ctx.message.delete()
