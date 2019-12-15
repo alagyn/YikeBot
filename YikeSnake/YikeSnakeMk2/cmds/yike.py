@@ -4,13 +4,11 @@ import typing
 import discord
 from asyncio import sleep
 import json
-import sys
 
 from consts import YIKE_EMOJI_ID
 from consts import THUMBS_UP
 from consts import THUMBS_DOWN
 from consts import YIKE_LOG
-from consts import ERROR_OUTPUT_MESSAGE
 
 import yikeSnake
 
@@ -47,8 +45,7 @@ class Yike(commands.Cog):
         if isinstance(error, commands.BadArgument):
             self.message = [await ctx.send_help(ctx.command)]
         else:
-            self.message = [await ctx.send(ERROR_OUTPUT_MESSAGE)]
-            print(f'{error}\n\t{ctx.message.content}', file=sys.stderr)
+            raise error
 
     @commands.Cog.listener(name='on_member_join')
     async def on_member_join(self, member: discord.Member):

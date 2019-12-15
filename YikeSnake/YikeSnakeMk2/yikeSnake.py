@@ -5,6 +5,8 @@ from discord.ext import commands
 from utils import timeUtils
 import sys
 
+from consts import ERROR_OUTPUT_MESSAGE
+
 
 class YikeSnake(discord.ext.commands.Bot):
 
@@ -34,8 +36,16 @@ class YikeSnake(discord.ext.commands.Bot):
 
     async def on_ready(self):
         self.addAdminLog(f'{self.user} is logged in')
-        await self.change_presence(activity=discord.Game("_help"))
+        activity = discord.Activity(name='_help', type=discord.ActivityType.watching)
+        await self.change_presence(activity=activity)
 
     async def on_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.CommandNotFound):
-            await ctx.send(error)
+            await ctx.send(str(error))
+        else:
+            self.lastMessage = [await ctx.send(ERROR_OUTPUT_MESSAGE)]
+            print(f'{error}\n\t{ctx.message.content}', file=sys.stderr)
+
+    @staticmethod
+    async def on_command(ctx: commands.Context):
+        pass

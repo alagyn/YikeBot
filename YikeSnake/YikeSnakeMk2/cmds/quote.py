@@ -4,12 +4,11 @@ from discord.ext import commands
 import discord
 import json
 import typing
-import sys
 
 from utils.timeUtils import *
 import yikeSnake
 
-from consts import QUOTE_LOG, REPLY_DELETE_TIME, Q_OUTPUT, ERROR_OUTPUT_MESSAGE
+from consts import QUOTE_LOG, REPLY_DELETE_TIME, Q_OUTPUT
 
 Q_ID_IDX = 0
 Q_DATE_IDX = 1
@@ -125,8 +124,7 @@ class Quote(commands.Cog):
         if isinstance(error, commands.BadArgument):
             self.message = [await ctx.send_help(ctx.command)]
         else:
-            self.message = [await ctx.send(ERROR_OUTPUT_MESSAGE)]
-            print(f'{error}\n\t{ctx.message.content}', file=sys.stderr)
+            raise error
 
 
 def setup(bot):

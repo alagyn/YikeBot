@@ -17,7 +17,7 @@ if debug == '0':
     logId = time.strftime("M%m_D%d_Y%Y_%H-%M-%S")
     logFile = f'./logs/adminLogs/{logId}.log'
     waitTime = consts.DEF_WAIT_TIME
-    sys.stderr = open(f'./logs/errorLogs/err__{logId}.log', mode='w')
+    sys.stderr = open(f'./logs/errorLogs/err_{logId}.log', mode='w')
 else:
     logFile = None
     waitTime = consts.DEBUG_WAIT_TIME
