@@ -1,8 +1,6 @@
-YikeSnake/YikeSnake/.env
-YikeSnake/YikeSnake.sln
-YikeSnake/YikeSnake/YikeSnake.pyproj
-YikeSnake/YikeSnake/__pycache__
-YikeSnake/.vs/YikeSnake/v16
-YikeSnake/YikeSnake/log.dat
-YikeSnake/YikeSnake/dat/*
-YikeSnake/YikeSnake/*/__pycache__
+.idea
+__pycache__
+*/__pycache__
+.env
+dat
+logs
