@@ -7,5 +7,8 @@
 _help for command list
 
 
-# Good Lord thou must smite this JavaScript
-*The JavaScript was smote by the great Python*
+
+---
+
+##### Good Lord thou must smite this JavaScript
+*The JavaScript was smote by the great Python, and every programmer in the world breathed a sigh of relief*
