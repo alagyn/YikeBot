@@ -1,7 +1,7 @@
 # YikeBot
 
-Maintains a count of the Yikes accrued by Discord users
-Implemented using [Discord.py](https://discordpy.readthedocs.io/en/latest/index.html "Discord.py Homepage")
+* Maintains a count of the Yikes accrued by Discord users
+* Implemented using [Discord.py](https://discordpy.readthedocs.io/en/latest/index.html "Discord.py Homepage")
 
 ### Usage
 _help for command list
