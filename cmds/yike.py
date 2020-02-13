@@ -24,23 +24,23 @@ class Yike(commands.Cog):
     def __init__(self, bot: yikeSnake.YikeSnake):
         self.bot: yikeSnake.YikeSnake = bot
         self._last_member = None
-        self.message = [discord.Message]
+        self.previousMsgs = [discord.Message]
         self.yikeLog = {}
 
     async def cog_before_invoke(self, ctx):
-        self.message = []
+        self.previousMsgs = []
         if len(self.yikeLog) == 0:
             self.readYikeLog()
 
     async def cog_after_invoke(self, ctx):
-        self.bot.setPreviousMsgs(self.message, ctx)
+        self.bot.setPreviousMsgs(self.previousMsgs, ctx)
         if len(self.yikeLog) > 0:
             self.writeYikeLog()
 
     # Error handling
     async def cog_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.BadArgument):
-            self.message = [await ctx.send_help(ctx.command)]
+            self.previousMsgs = [await ctx.send_help(ctx.command)]
         else:
             raise error
 
@@ -51,6 +51,7 @@ class Yike(commands.Cog):
 
     @commands.Cog.listener(name='on_ready')
     async def on_ready(self):
+        # Init yikeLog
         for g in self.bot.guilds:
             for m in g.members:
                 self.yikeLog[m.id] = 0
@@ -60,17 +61,18 @@ class Yike(commands.Cog):
     @commands.command(name="yike", help=YIKE_DESC, aliases=['y'],
                       brief='_yike <user> [amount]', usage='<user> [amount]')
     async def yike(self, ctx, user: discord.Member, amnt=1):
+        # Check the channel for correct users
         if await self.checkChannel(ctx):
             return
 
         if amnt <= 0:
-            self.message = [await ctx.send("Invalid amount")]
+            self.previousMsgs = [await ctx.send("Invalid amount")]
             return
 
         self.yikeLog[user.id] += amnt
         self.bot.addAdminLog(f'Yike of {user} initiated by {ctx.author} '
                              f'in channel {ctx.channel.name} : {ctx.message.content}')
-        self.message = [await ctx.send(f'{user.display_name}... <:yike:{YIKE_EMOJI_ID}>\n'
+        self.previousMsgs = [await ctx.send(f'{user.display_name}... <:yike:{YIKE_EMOJI_ID}>\n'
                                        f'You now have {self.yikeLog[user.id]} yikes')]
 
     # UNYIKE
@@ -80,10 +82,12 @@ class Yike(commands.Cog):
         if await self.checkChannel(ctx):
             return
 
+        # Check for zero yikes
         if self.yikeLog[user.id] == 0:
-            self.message = [await ctx.send("NO NEGATIVE YIKES\nYou cheeky monkey")]
+            self.previousMsgs = [await ctx.send("NO NEGATIVE YIKES\nYou cheeky monkey")]
             return
 
+        # Send voter yikes
         voter: discord.Message = await ctx.send("The legion shall decide your fate")
 
         await voter.add_reaction(THUMBS_UP)
@@ -97,6 +101,7 @@ class Yike(commands.Cog):
         upVoters = ''
         downVoters = ''
 
+        # Count reactions
         for x in cacheMsg.reactions:
             if x.emoji == THUMBS_UP:
                 up = x.count
@@ -114,20 +119,22 @@ class Yike(commands.Cog):
                              f'\tUpVotes: {upVoters}\n\tDownVotes: {downVoters}')
         await cacheMsg.delete()
 
+        # Unyike if upvotes are at least 2 greater
         if down + 1 >= up:
-            self.message = [await ctx.send("The yike shall stand")]
+            self.previousMsgs = [await ctx.send("The yike shall stand")]
         else:
             self.yikeLog[user.id] -= amnt
-            self.message = [await ctx.send(f"{user.display_name}, you have been forgiven\n"
+            self.previousMsgs = [await ctx.send(f"{user.display_name}, you have been forgiven\n"
                                            f"you now have {str(self.yikeLog[user.id])}")]
 
     # Channel check
     async def checkChannel(self, ctx) -> bool:
+        # Make sure that channel has at least half of the server members
         x = len(ctx.channel.members) < len(ctx.guild.members) / 2
         if x:
             self.bot.addAdminLog(f'Yike/Unyike audience too small, initiated by {ctx.author.name} '
                                  f'in channel {ctx.channel.name} : "{ctx.message.content}"')
-            self.message = [await ctx.send(self.AUDIENCE_ERROR)]
+            self.previousMsgs = [await ctx.send(self.AUDIENCE_ERROR)]
         return x
 
     # LIST
@@ -141,7 +148,7 @@ class Yike(commands.Cog):
         else:
             output = f'{user.display_name} has {self.yikeLog[user.id]}'
 
-        self.message = [await ctx.send(output)]
+        self.previousMsgs = [await ctx.send(output)]
 
     def writeYikeLog(self):
         with open(YIKE_LOG, mode='w') as f:
