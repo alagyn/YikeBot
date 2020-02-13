@@ -17,13 +17,13 @@ class Util(commands.Cog):
     @commands.command(name="clear", help=CLEAR_USAGE, brief="_clear")
     async def clear(self, ctx):
         await ctx.message.delete()
-        if self.bot.lastMessage is not None:
+        if self.bot.previousMessages is not None:
             m2 = discord.utils.get(self.bot.cached_messages, id=self.bot.lastCmd)
-            for x in self.bot.lastMessage:
+            for x in self.bot.previousMessages:
                 m: discord.Message = discord.utils.get(self.bot.cached_messages, id=x)
                 await m.delete()
             await m2.delete()
-            self.bot.lastMessage = None
+            self.bot.previousMessages = None
 
 
 def setup(bot):

@@ -8,7 +8,7 @@ import typing
 from utils.timeUtils import *
 import yikeSnake
 
-from consts import QUOTE_LOG, REPLY_DELETE_TIME, Q_OUTPUT
+from consts import QUOTE_LOG, REPLY_DELETE_TIME, Q_OUTPUT, THUMBS_UP
 
 Q_ID_IDX = 0
 Q_DATE_IDX = 1
@@ -21,40 +21,50 @@ MAX_MESSAGE_LEN = 1000
 class Quote(commands.Cog):
 
     def __init__(self, bot: yikeSnake.YikeSnake):
-        self.message = [discord.Message]
+        # References to the messages sent
+        self.currentMessages = []
+        # Reference to the bot
         self.bot = bot
+        # IDK
         self._last_member = None
 
     async def cog_before_invoke(self, ctx):
-        self.message = []
+        # Reset the current msgs to just the new context
+        self.currentMessages = []
 
     async def cog_after_invoke(self, ctx):
-        self.bot.lastMessage = []
-        for x in self.message:
-            self.bot.lastMessage.append(x.id)
-        self.bot.lastCmd = ctx.message.id
+        # Sets the previous set msgs in the bot
+        self.bot.setPreviousMsgs(self.currentMessages, ctx)
 
     @commands.command(name="quote", rest_is_raw=True, brief="_quote <user> <message>", usage="<user> <message>",
                       help="Adds a quote for a user to a running log")
     async def quote(self, ctx: commands.Context, *, arg: str):
-        x = commands.UserConverter()
+        # Retrieve a new UserConverter
+        converter = commands.UserConverter()
+        # Strip leading/trailing spaces
         arg = arg.strip()
         try:
+            # Split the args by spaces
             content = arg.split(' ')
+            # Check if there is less than 2 args
             if len(content) < 2:
-                self.message = [await ctx.send_help()]
+                self.currentMessages = [await ctx.send_help()]
                 return
 
-            user: discord.User = await x.convert(ctx=ctx, argument=content[0])
+            # try to convert the first argument into a user
+            user: discord.User = await converter.convert(ctx=ctx, argument=content[0])
         except commands.CommandError:
-            self.message = [await ctx.send("Invalid user")]
+            self.currentMessages = [await ctx.send("Invalid user")]
             return
 
+        # Finds the end of the quote author's @
         qMessage = arg[arg.find('>') + 1:]
         qMessage = qMessage.strip()
 
+        # Set JSON output
         jOuput = [user.id, getCurrentTime(), qMessage]
 
+        # Write the JSON to file
         try:
             with open(QUOTE_LOG, mode='a') as f:
                 f.write(f'{json.dumps(jOuput)}\n')
@@ -62,21 +72,25 @@ class Quote(commands.Cog):
             self.bot.addAdminLog(f"Error writing quote, author: {ctx.author.name}, channel: {ctx.channel.name}:"
                                  f" {ctx.message.content}")
 
-        await ctx.send('Quote recorded', delete_after=REPLY_DELETE_TIME)
+        await ctx.message.add_reaction(THUMBS_UP)
+        # await ctx.send('Quote recorded', delete_after=REPLY_DELETE_TIME)
 
     @commands.command(name="getQuotes", aliases=["getQuote"], help='Returns all the quotes for a server or user, '
                                                                    '-m flag for message output',
                       brief='_[getQuotes|getQuote] [user] [-m]')
     async def getQuotes(self, ctx: commands.Context, user: typing.Optional[discord.User] = None,
                         mode: typing.Optional[str] = None):
+
         fileName = ''
         output = []
 
         if user is not None:
+            # set up filename for single user quotes
             temp = user.display_name.split(' ')
             for x in temp:
                 fileName += f'{x}_'
 
+            # Retrieve quotes with single user id
             with open(QUOTE_LOG, mode='r') as f:
                 for line in f:
                     curQuote = json.loads(line)
@@ -85,6 +99,7 @@ class Quote(commands.Cog):
                                       f'{curQuote[Q_CONTENT_IDX]}')
 
         else:
+            # Retrieve quotes for server
             with open(QUOTE_LOG, mode='r') as f:
                 for line in f:
                     curQuote = json.loads(line)
@@ -99,30 +114,34 @@ class Quote(commands.Cog):
             await ctx.send("No quotes found", delete_after=REPLY_DELETE_TIME)
             return
 
+        # Check for message mode flag
+        # Splits msg to not exceed MAX_MESSAGE_LEN
         if mode is not None and mode.__eq__(MESSAGE_OUTPUT_FLAG):
             count = 0
             curMessage = ''
             for x in output:
                 if count + len(x) >= MAX_MESSAGE_LEN:
                     count = 0
-                    self.message.append(await ctx.send(curMessage))
+                    self.currentMessages.append(await ctx.send(curMessage))
                     curMessage = ''
                 else:
                     curMessage += f'{x}\n\n'
                     count += len(x)
 
             if count > 0:
-                self.message.append(await ctx.send(curMessage))
+                self.currentMessages.append(await ctx.send(curMessage))
         else:
+            # Write to output file and send as attachment
             with open(Q_OUTPUT, mode='w') as f:
                 for x in output:
                     f.write(f'{x}\n\n')
             with open(Q_OUTPUT, mode='rb') as f:
-                self.message = [await ctx.send(file=discord.File(f, filename=fileName))]
+                self.currentMessages = [await ctx.send(file=discord.File(f, filename=fileName))]
 
+    # Error handling
     async def cog_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.BadArgument):
-            self.message = [await ctx.send_help(ctx.command)]
+            self.currentMessages = [await ctx.send_help(ctx.command)]
         else:
             raise error
 

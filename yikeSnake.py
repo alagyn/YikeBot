@@ -20,8 +20,8 @@ class YikeSnake(discord.ext.commands.Bot):
         print(f"Error log init at {startTime}", file=sys.stderr)
         self.outputFile = logFile
         self.waitTime = waitTime
-        self.lastMessage = []
-        self.lastCmd: int
+        self.previousMessages = []
+        self.lastCmd: int = 0
 
     def addAdminLog(self, message: str):
         output = f'{timeUtils.readDate(timeUtils.getCurrentTime())}: {message}'
@@ -30,6 +30,12 @@ class YikeSnake(discord.ext.commands.Bot):
                 log.write(f'{output}\n')
         else:
             print(output)
+
+    def setPreviousMsgs(self, msgs: [], ctx):
+        self.previousMessages = []
+        self.lastCmd = ctx.message.id
+        for x in msgs:
+            self.previousMessages.append(x.id)
 
     async def on_member_join(self, member):
         pass
@@ -43,7 +49,7 @@ class YikeSnake(discord.ext.commands.Bot):
         if isinstance(error, commands.CommandNotFound):
             await ctx.send(str(error))
         else:
-            self.lastMessage = [await ctx.send(ERROR_OUTPUT_MESSAGE)]
+            self.previousMessages = [await ctx.send(ERROR_OUTPUT_MESSAGE)]
             print(f'{error}\n\t{ctx.message.content}', file=sys.stderr)
 
     @staticmethod

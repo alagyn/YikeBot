@@ -33,10 +33,7 @@ class Yike(commands.Cog):
             self.readYikeLog()
 
     async def cog_after_invoke(self, ctx):
-        self.bot.lastMessage = []
-        for x in self.message:
-            self.bot.lastMessage.append(x.id)
-        self.bot.lastCmd = ctx.message.id
+        self.bot.setPreviousMsgs(self.message, ctx)
         if len(self.yikeLog) > 0:
             self.writeYikeLog()
 
