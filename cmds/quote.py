@@ -178,10 +178,8 @@ class Quote(commands.Cog):
 
     # Error handling
     async def cog_command_error(self, ctx: commands.Context, error):
-        if isinstance(error, commands.BadArgument):
+        if isinstance(error, commands.UserInputError):
             self.currentMessages = [await ctx.send_help(ctx.command)]
-        else:
-            raise error
 
 
 def setup(bot):

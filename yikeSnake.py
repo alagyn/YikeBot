@@ -48,8 +48,8 @@ class YikeSnake(discord.ext.commands.Bot):
     async def on_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.CommandNotFound):
             await ctx.send(str(error))
-        else:
-            self.previousMessages = [await ctx.send(ERROR_OUTPUT_MESSAGE)]
+        elif not isinstance(error, commands.UserInputError):
+            self.previousMessages = [await ctx.send("MAIN ERR: " + ERROR_OUTPUT_MESSAGE)]
             print(f'{error}\n\t{ctx.message.content}', file=sys.stderr)
 
     @staticmethod

@@ -39,10 +39,8 @@ class Yike(commands.Cog):
 
     # Error handling
     async def cog_command_error(self, ctx: commands.Context, error):
-        if isinstance(error, commands.BadArgument):
+        if isinstance(error, commands.UserInputError):
             self.previousMsgs = [await ctx.send_help(ctx.command)]
-        else:
-            raise error
 
     @commands.Cog.listener(name='on_member_join')
     async def on_member_join(self, member: discord.Member):
