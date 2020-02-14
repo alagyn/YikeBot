@@ -36,6 +36,39 @@ class Quote(commands.Cog):
         # Sets the previous set msgs in the bot
         self.bot.setPreviousMsgs(self.currentMessages, ctx)
 
+    @commands.command(name="edit", rest_is_raw=True, brief='_edit <delta> <new message>', usage='<delta> <message>',
+                      help='Edits a quote, where delta is the number of previous quotes, with 0 being the '
+                           'most recent quote')
+    async def edit(self, ctx: commands.Context, delta: int, *, arg: str):
+        if delta < 0:
+            self.currentMessages = [await ctx.send_help(ctx.command)]
+            return
+
+        lines = []
+        try:
+            with open(QUOTE_LOG, mode='r') as f:
+                for x in f:
+                    lines.append(x)
+        except FileNotFoundError:
+            self.currentMessages = [await ctx.send('No quotes to edit')]
+            return
+
+        toEdit = len(lines) - 1 - delta
+
+        if toEdit < 0:
+            self.currentMessages = [await ctx.send_help(ctx.command)]
+            return
+
+        x = json.loads(lines[toEdit])
+        x[Q_CONTENT_IDX] = arg
+        lines[toEdit] = json.dumps(x) + '\n'
+
+        with open(QUOTE_LOG, mode='w') as f:
+            for line in lines:
+                f.write(line)
+
+        await ctx.message.add_reaction(THUMBS_UP)
+
     @commands.command(name="quote", rest_is_raw=True, brief="_quote <user> <message>", usage="<user> <message>",
                       help="Adds a quote for a user to a running log")
     async def quote(self, ctx: commands.Context, *, arg: str):
@@ -91,23 +124,28 @@ class Quote(commands.Cog):
                 fileName += f'{x}_'
 
             # Retrieve quotes with single user id
-            with open(QUOTE_LOG, mode='r') as f:
-                for line in f:
-                    curQuote = json.loads(line)
-                    if str(user.id).__eq__(str(curQuote[Q_ID_IDX])):
-                        output.append(f'{readDate(curQuote[Q_DATE_IDX])}\n'
-                                      f'{curQuote[Q_CONTENT_IDX]}')
+            try:
+                with open(QUOTE_LOG, mode='r') as f:
+                    for line in f:
+                        curQuote = json.loads(line)
+                        if str(user.id).__eq__(str(curQuote[Q_ID_IDX])):
+                            output.append(f'{readDate(curQuote[Q_DATE_IDX])}\n'
+                                          f'{curQuote[Q_CONTENT_IDX]}')
+            except FileNotFoundError:
+                return
 
         else:
             # Retrieve quotes for server
-            with open(QUOTE_LOG, mode='r') as f:
-                for line in f:
-                    curQuote = json.loads(line)
-                    curUser = discord.utils.get(ctx.guild.members, id=int(curQuote[Q_ID_IDX]))
-                    if curUser is not None:
-                        output.append(f'{curUser.display_name} {readDate(curQuote[Q_DATE_IDX])}\n'
-                                      f'{curQuote[Q_CONTENT_IDX]}')
-
+            try:
+                with open(QUOTE_LOG, mode='r') as f:
+                    for line in f:
+                        curQuote = json.loads(line)
+                        curUser = discord.utils.get(ctx.guild.members, id=int(curQuote[Q_ID_IDX]))
+                        if curUser is not None:
+                            output.append(f'{curUser.display_name} {readDate(curQuote[Q_DATE_IDX])}\n'
+                                          f'{curQuote[Q_CONTENT_IDX]}')
+            except FileNotFoundError:
+                return
         fileName += 'quotes.txt'
 
         if len(output).__eq__(0):
