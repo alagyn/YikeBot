@@ -5,9 +5,12 @@
 
 ### Usage
 ```
+
+
 <....> = Required argument
 [....] = Optional argument
 
+╞══════════════════════════════════════════════════════════════════════╡
 
 _help for command list
 
@@ -40,6 +43,8 @@ _edit <delta> <New quote>
   
 _clear
   Deletes the most recent messages and user command
+  
+╞══════════════════════════════════════════════════════════════════════╡  
   
 ADMIN COMMANDS - must be bot owner to execute
 
