@@ -36,7 +36,7 @@ MESSAGE_OUTPUT_FLAG = '-m'
 MAX_MESSAGE_LEN = 1000
 
 
-def getQouteList():
+def getQuoteListLines():
     lines = []
     with open(QUOTE_LOG, mode='r') as f:
         for x in f:
@@ -44,10 +44,26 @@ def getQouteList():
     return lines
 
 
+def loadQuoteList():
+    quotes = []
+    with open(QUOTE_LOG, mode='r') as f:
+        for x in f:
+            quotes.append(json.loads(x))
+    return quotes
+
+
 def writeQuoteList(q_list):
     with open(QUOTE_LOG, mode='w') as f:
         for x in q_list:
             f.write(x)
+
+
+def splitQuoteList(quotes, userId):
+    out = []
+    for x in quotes:
+        if x[Q_ID_IDX] == userId:
+            out.append(x)
+    return out
 
 
 class Quote(commands.Cog):
@@ -97,7 +113,7 @@ class Quote(commands.Cog):
         if delta < 0:
             self.currentMessages = [await ctx.send_help(ctx.command)]
 
-        q_list = getQouteList()
+        q_list = getQuoteListLines()
         index = len(q_list) - 1 - delta
         quote = json.loads(q_list[index])
 
@@ -121,7 +137,7 @@ class Quote(commands.Cog):
             return
 
         try:
-            lines = getQouteList()
+            lines = getQuoteListLines()
         except FileNotFoundError:
             self.currentMessages = [await ctx.send('No quotes to edit')]
             return
@@ -187,9 +203,15 @@ class Quote(commands.Cog):
     @commands.command(name="getQuotes", aliases=["getQuote"], help=GET_QUOTE_HELP, brief=GET_QUOTE_BRIEF)
     async def getQuotes(self, ctx: commands.Context, user: typing.Optional[discord.User] = None,
                         mode: typing.Optional[str] = None):
-        # TODO implement delta printing
         fileName = ''
         output = []
+
+        try:
+            qList = loadQuoteList()
+        except FileNotFoundError:
+            return
+
+        printDelta = mode is not None and mode.__contains__('d')
 
         if user is not None:
             # set up filename for single user quotes
@@ -197,29 +219,25 @@ class Quote(commands.Cog):
             for x in temp:
                 fileName += f'{x}_'
 
-            # Retrieve quotes with single user id
-            try:
-                with open(QUOTE_LOG, mode='r') as f:
-                    for line in f:
-                        curQuote = json.loads(line)
-                        if str(user.id).__eq__(str(curQuote[Q_ID_IDX])):
-                            output.append(f'{readDate(curQuote[Q_DATE_IDX])}\n'
-                                          f'{curQuote[Q_CONTENT_IDX]}')
-            except FileNotFoundError:
-                return
+            qList = splitQuoteList(qList, user.id)
+            for x in qList:
+                output.append(f'{readDate(x[Q_DATE_IDX])}\n'
+                              f'{x[Q_CONTENT_IDX]}')
 
         else:
             # Retrieve quotes for server
-            try:
-                with open(QUOTE_LOG, mode='r') as f:
-                    for line in f:
-                        curQuote = json.loads(line)
-                        curUser = discord.utils.get(ctx.guild.members, id=int(curQuote[Q_ID_IDX]))
-                        if curUser is not None:
-                            output.append(f'{curUser.display_name} {readDate(curQuote[Q_DATE_IDX])}\n'
-                                          f'{curQuote[Q_CONTENT_IDX]}')
-            except FileNotFoundError:
-                return
+            i = 0
+            for quote in qList:
+                curUser = discord.utils.get(ctx.guild.members, id=int(quote[Q_ID_IDX]))
+                if curUser is not None:
+                    text = ''
+                    if printDelta:
+                        text = f'{len(qList) - 1 - i}: '
+                        i += 1
+                    text += f'{curUser.display_name} {readDate(quote[Q_DATE_IDX])}\n' + \
+                            f'{quote[Q_CONTENT_IDX]}'
+                    output.append(text)
+
         fileName += 'quotes.txt'
 
         if len(output).__eq__(0):
@@ -228,7 +246,7 @@ class Quote(commands.Cog):
 
         # Check for message mode flag
         # Splits msg to not exceed MAX_MESSAGE_LEN
-        if mode is not None and mode.__eq__(MESSAGE_OUTPUT_FLAG):
+        if mode is not None and mode.__contains__('m'):
             count = 0
             curMessage = ''
             for x in output:
@@ -250,10 +268,11 @@ class Quote(commands.Cog):
             with open(Q_OUTPUT, mode='rb') as f:
                 self.currentMessages = [await ctx.send(file=discord.File(f, filename=fileName))]
 
-    # Error handling
-    async def cog_command_error(self, ctx: commands.Context, error):
-        if isinstance(error, commands.UserInputError):
-            self.currentMessages = [await ctx.send_help(ctx.command)]
+
+# Error handling
+async def cog_command_error(self, ctx: commands.Context, error):
+    if isinstance(error, commands.UserInputError):
+        self.currentMessages = [await ctx.send_help(ctx.command)]
 
 
 def setup(bot):
