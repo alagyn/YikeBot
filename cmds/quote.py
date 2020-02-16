@@ -4,11 +4,12 @@ from discord.ext import commands
 import discord
 import json
 import typing
+import asyncio
 
 from utils.timeUtils import *
 import yikeSnake
 
-from consts import QUOTE_LOG, REPLY_DELETE_TIME, Q_OUTPUT, THUMBS_UP
+from consts import QUOTE_LOG, REPLY_DELETE_TIME, Q_OUTPUT, THUMBS_UP, THUMBS_DOWN, CHECK_MARK, X_MARK
 
 Q_ID_IDX = 0
 Q_DATE_IDX = 1
@@ -59,15 +60,40 @@ class Quote(commands.Cog):
             self.currentMessages = [await ctx.send_help(ctx.command)]
             return
 
-        x = json.loads(lines[toEdit])
-        x[Q_CONTENT_IDX] = arg
-        lines[toEdit] = json.dumps(x) + '\n'
+        oldQuote = json.loads(lines[toEdit])
 
-        with open(QUOTE_LOG, mode='w') as f:
-            for line in lines:
-                f.write(line)
+        confirm = await ctx.send(f'Old quote:\n'
+                                 f'> {oldQuote[Q_CONTENT_IDX]}\n'
+                                 f'New quote:\n'
+                                 f'> {arg}\n'
+                                 f'Select :white_check_mark: to submit, :x: to cancel')
 
-        await ctx.message.add_reaction(THUMBS_UP)
+        await confirm.add_reaction(CHECK_MARK)
+        await confirm.add_reaction(X_MARK)
+
+        def check(m_reaction, m_user):
+            return (m_user.__eq__(ctx.message.author) and
+                    (str(m_reaction.emoji) == CHECK_MARK or str(m_reaction.emoji) == X_MARK))
+
+        try:
+            reaction, user = await self.bot.wait_for('reaction_add', timeout=60, check=check)
+
+            if str(reaction) == CHECK_MARK:
+                oldQuote[Q_CONTENT_IDX] = arg
+                lines[toEdit] = json.dumps(oldQuote) + '\n'
+
+                with open(QUOTE_LOG, mode='w') as f:
+                    for x in lines:
+                        f.write(x)
+
+                await ctx.message.add_reaction(THUMBS_UP)
+            else:
+                await ctx.message.add_reaction(THUMBS_DOWN)
+
+        except asyncio.TimeoutError:
+            await ctx.message.add_reaction(THUMBS_DOWN)
+
+        await confirm.delete()
 
     @commands.command(name="quote", rest_is_raw=True, brief="_quote <user> <message>", usage="<user> <message>",
                       help="Adds a quote for a user to a running log")
@@ -112,7 +138,7 @@ class Quote(commands.Cog):
                                                                    '-m flag for message output',
                       brief='_[getQuotes|getQuote] [user] [-m]')
     async def getQuotes(self, ctx: commands.Context, user: typing.Optional[discord.User] = None,
-                        mode: typing.Optional[str] = None):
+                        mode: typing.Optional[str] = None, printDeltas: typing.Optional[str] = None):
 
         fileName = ''
         output = []
