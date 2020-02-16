@@ -11,12 +11,43 @@ import yikeSnake
 
 from consts import QUOTE_LOG, REPLY_DELETE_TIME, Q_OUTPUT, THUMBS_UP, THUMBS_DOWN, CHECK_MARK, X_MARK
 
+GET_QUOTE_BRIEF = '_[getQuotes|getQuote] [user] [-m]'
+GET_QUOTE_HELP = 'Returns all the quotes for a server or user, -m flag for message output'
+
+QUOTE_HELP = "Adds a quote for a user to a running log"
+QUOTE_BRIEF = "_quote <user> <message>"
+QUOTE_USAGE = "<user> <message>"
+
+EDIT_HELP = 'Edits the delta-th previous quote, I.E. edit 0 will change the most recent quote'
+EDIT_BRIEF = '_edit <delta> <new message>'
+EDIT_USAGE = '<delta> <message>'
+
+REMOVE_HELP = 'Removes the delta-th previous quote, I.E. removeQuote 0 will delete the most recent quote'
+REMOVE_BRIEF = '_[removeQuote|rm] <delta>'
+REMOVE_USAGE = '<delta>'
+
+# TODO extract quote txt output into func
+
 Q_ID_IDX = 0
 Q_DATE_IDX = 1
 Q_CONTENT_IDX = 2
 
 MESSAGE_OUTPUT_FLAG = '-m'
 MAX_MESSAGE_LEN = 1000
+
+
+def getQouteList():
+    lines = []
+    with open(QUOTE_LOG, mode='r') as f:
+        for x in f:
+            lines.append(x)
+    return lines
+
+
+def writeQuoteList(q_list):
+    with open(QUOTE_LOG, mode='w') as f:
+        for x in q_list:
+            f.write(x)
 
 
 class Quote(commands.Cog):
@@ -37,19 +68,60 @@ class Quote(commands.Cog):
         # Sets the previous set msgs in the bot
         self.bot.setPreviousMsgs(self.currentMessages, ctx)
 
-    @commands.command(name="edit", rest_is_raw=True, brief='_edit <delta> <new message>', usage='<delta> <message>',
-                      help='Edits a quote, where delta is the number of previous quotes, with 0 being the '
-                           'most recent quote')
+    async def sendConfirmMsg(self, ctx: commands.Context, msg) -> bool:
+        def check(m_reaction, m_user):
+            return (m_user.__eq__(ctx.message.author) and
+                    (str(m_reaction.emoji) == CHECK_MARK or str(m_reaction.emoji) == X_MARK))
+
+        confirm = await ctx.send(msg + f'\nSelect :white_check_mark: to submit, :x: to cancel')
+
+        await confirm.add_reaction(CHECK_MARK)
+        await confirm.add_reaction(X_MARK)
+
+        out = False
+
+        try:
+            reaction, user = await self.bot.wait_for('reaction_add', timeout=60, check=check)
+
+            if str(reaction) == CHECK_MARK:
+                out = True
+
+        except asyncio.TimeoutError:
+            pass
+
+        await confirm.delete()
+        return out
+
+    @commands.command(name='removeQuote', aliases=['rm'], brief=REMOVE_BRIEF, usage=REMOVE_USAGE, help=REMOVE_HELP)
+    async def remove(self, ctx: commands.Context, delta: int):
+        if delta < 0:
+            self.currentMessages = [await ctx.send_help(ctx.command)]
+
+        q_list = getQouteList()
+        index = len(q_list) - 1 - delta
+        quote = json.loads(q_list[index])
+
+        author = discord.utils.get(ctx.guild.members, id=int(quote[Q_ID_IDX]))
+        author = author.display_name
+        response = await self.sendConfirmMsg(ctx, f'Delete this quote?:\n'
+                                                  f'``` Author: {author}\n'
+                                                  f'{quote[Q_CONTENT_IDX]} ```')
+
+        if response:
+            q_list.pop(index)
+            writeQuoteList(q_list)
+            await ctx.message.add_reaction(THUMBS_UP)
+        else:
+            await ctx.message.add_reaction(THUMBS_DOWN)
+
+    @commands.command(name="edit", rest_is_raw=True, brief=EDIT_BRIEF, usage=EDIT_USAGE, help=EDIT_HELP)
     async def edit(self, ctx: commands.Context, delta: int, *, arg: str):
         if delta < 0:
             self.currentMessages = [await ctx.send_help(ctx.command)]
             return
 
-        lines = []
         try:
-            with open(QUOTE_LOG, mode='r') as f:
-                for x in f:
-                    lines.append(x)
+            lines = getQouteList()
         except FileNotFoundError:
             self.currentMessages = [await ctx.send('No quotes to edit')]
             return
@@ -62,41 +134,20 @@ class Quote(commands.Cog):
 
         oldQuote = json.loads(lines[toEdit])
 
-        confirm = await ctx.send(f'Old quote:\n'
-                                 f'> {oldQuote[Q_CONTENT_IDX]}\n'
-                                 f'New quote:\n'
-                                 f'> {arg}\n'
-                                 f'Select :white_check_mark: to submit, :x: to cancel')
+        response = await self.sendConfirmMsg(ctx, f'Old quote:\n'
+                                                  f'``` {oldQuote[Q_CONTENT_IDX]} ```\n'
+                                                  f'New quote:\n\n'
+                                                  f'``` {arg} ```')
 
-        await confirm.add_reaction(CHECK_MARK)
-        await confirm.add_reaction(X_MARK)
-
-        def check(m_reaction, m_user):
-            return (m_user.__eq__(ctx.message.author) and
-                    (str(m_reaction.emoji) == CHECK_MARK or str(m_reaction.emoji) == X_MARK))
-
-        try:
-            reaction, user = await self.bot.wait_for('reaction_add', timeout=60, check=check)
-
-            if str(reaction) == CHECK_MARK:
-                oldQuote[Q_CONTENT_IDX] = arg
-                lines[toEdit] = json.dumps(oldQuote) + '\n'
-
-                with open(QUOTE_LOG, mode='w') as f:
-                    for x in lines:
-                        f.write(x)
-
-                await ctx.message.add_reaction(THUMBS_UP)
-            else:
-                await ctx.message.add_reaction(THUMBS_DOWN)
-
-        except asyncio.TimeoutError:
+        if response:
+            oldQuote[Q_CONTENT_IDX] = arg
+            lines[toEdit] = json.dumps(oldQuote) + '\n'
+            writeQuoteList(lines)
+            await ctx.message.add_reaction(THUMBS_UP)
+        else:
             await ctx.message.add_reaction(THUMBS_DOWN)
 
-        await confirm.delete()
-
-    @commands.command(name="quote", rest_is_raw=True, brief="_quote <user> <message>", usage="<user> <message>",
-                      help="Adds a quote for a user to a running log")
+    @commands.command(name="quote", rest_is_raw=True, brief=QUOTE_BRIEF, usage=QUOTE_USAGE, help=QUOTE_HELP)
     async def quote(self, ctx: commands.Context, *, arg: str):
         # Retrieve a new UserConverter
         converter = commands.UserConverter()
@@ -132,14 +183,11 @@ class Quote(commands.Cog):
                                  f" {ctx.message.content}")
 
         await ctx.message.add_reaction(THUMBS_UP)
-        # await ctx.send('Quote recorded', delete_after=REPLY_DELETE_TIME)
 
-    @commands.command(name="getQuotes", aliases=["getQuote"], help='Returns all the quotes for a server or user, '
-                                                                   '-m flag for message output',
-                      brief='_[getQuotes|getQuote] [user] [-m]')
+    @commands.command(name="getQuotes", aliases=["getQuote"], help=GET_QUOTE_HELP, brief=GET_QUOTE_BRIEF)
     async def getQuotes(self, ctx: commands.Context, user: typing.Optional[discord.User] = None,
-                        mode: typing.Optional[str] = None, printDeltas: typing.Optional[str] = None):
-
+                        mode: typing.Optional[str] = None):
+        # TODO implement delta printing
         fileName = ''
         output = []
 

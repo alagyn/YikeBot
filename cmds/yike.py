@@ -71,7 +71,7 @@ class Yike(commands.Cog):
         self.bot.addAdminLog(f'Yike of {user} initiated by {ctx.author} '
                              f'in channel {ctx.channel.name} : {ctx.message.content}')
         self.previousMsgs = [await ctx.send(f'{user.display_name}... <:yike:{YIKE_EMOJI_ID}>\n'
-                                       f'You now have {self.yikeLog[user.id]} yikes')]
+                                            f'You now have {self.yikeLog[user.id]} yikes')]
 
     # UNYIKE
     @commands.command(name="unyike", help=UNYIKE_USAGE, aliases=['uy'],
@@ -123,7 +123,7 @@ class Yike(commands.Cog):
         else:
             self.yikeLog[user.id] -= amnt
             self.previousMsgs = [await ctx.send(f"{user.display_name}, you have been forgiven\n"
-                                           f"you now have {str(self.yikeLog[user.id])}")]
+                                                f"you now have {str(self.yikeLog[user.id])}")]
 
     # Channel check
     async def checkChannel(self, ctx) -> bool:
