@@ -4,13 +4,14 @@ from discord.ext import commands
 
 from utils import timeUtils
 import sys
+import asyncio
 
 from consts import ERROR_OUTPUT_MESSAGE
 
 
 class YikeSnake(discord.ext.commands.Bot):
 
-    def __init__(self, logFile, waitTime):
+    def __init__(self, logFile, backupFolder, waitTime, backupTime):
         super().__init__(command_prefix='_', case_insensitive=True)
 
         startTime = timeUtils.readDate(timeUtils.getCurrentTime())
@@ -22,6 +23,8 @@ class YikeSnake(discord.ext.commands.Bot):
         self.waitTime = waitTime
         self.previousMessages = []
         self.lastCmd: int = 0
+        self.backupFolder = backupFolder
+        self.backupTime = backupTime
 
     def addAdminLog(self, message: str):
         output = f'{timeUtils.readDate(timeUtils.getCurrentTime())}: {message}'

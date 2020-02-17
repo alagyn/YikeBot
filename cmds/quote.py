@@ -75,6 +75,20 @@ class Quote(commands.Cog):
         self.bot = bot
         # IDK
         self._last_member = None
+        self.bot.loop.create_task(self.backupQuoteLog())
+
+    async def backupQuoteLog(self):
+        await self.bot.wait_until_ready()
+        while not self.bot.is_closed():
+            with open(self.bot.backupFolder + 'quote_backup.dat', mode='w') as f:
+                try:
+                    q = getQuoteListLines()
+                    for x in q:
+                        f.write(x)
+                    self.bot.addAdminLog('QuoteLog backup complete')
+                except FileNotFoundError:
+                    self.bot.addAdminLog('No Quotes, backup skipped')
+            await asyncio.sleep(self.bot.backupTime)
 
     async def cog_before_invoke(self, ctx):
         # Reset the current msgs to just the new context

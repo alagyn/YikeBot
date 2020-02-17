@@ -35,7 +35,7 @@ class Yike(commands.Cog):
     async def cog_after_invoke(self, ctx):
         self.bot.setPreviousMsgs(self.previousMsgs, ctx)
         if len(self.yikeLog) > 0:
-            self.writeYikeLog()
+            self.writeYikeLog(YIKE_LOG)
 
     # Error handling
     async def cog_command_error(self, ctx: commands.Context, error):
@@ -54,6 +54,13 @@ class Yike(commands.Cog):
             for m in g.members:
                 self.yikeLog[m.id] = 0
         self.readYikeLog()
+        self.bot.loop.create_task(self.backupYikeLog())
+
+    async def backupYikeLog(self):
+        while not self.bot.is_closed():
+            self.writeYikeLog(self.bot.backupFolder + 'yike_backup.dat')
+            self.bot.addAdminLog('Yike Log backup complete')
+            await sleep(self.bot.backupTime)
 
     # YIKE
     @commands.command(name="yike", help=YIKE_DESC, aliases=['y'],
@@ -148,8 +155,8 @@ class Yike(commands.Cog):
 
         self.previousMsgs = [await ctx.send(output)]
 
-    def writeYikeLog(self):
-        with open(YIKE_LOG, mode='w') as f:
+    def writeYikeLog(self, file):
+        with open(file, mode='w') as f:
             for userId in self.yikeLog:
                 f.write(f'{json.dumps([userId, self.yikeLog[userId]])}\n')
 
