@@ -144,7 +144,7 @@ class Yike(commands.Cog):
 
     # LIST
     @commands.command(name="list", help=LIST_DESC, brief='_list [user]', usage='[user]')
-    async def list(self, ctx, user: typing.Optional[discord.User] = None):
+    async def list(self, ctx, user: typing.Optional[discord.Member] = None):
         output = ''
 
         if user is None:
