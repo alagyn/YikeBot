@@ -2,7 +2,7 @@
 
 from discord.ext import commands
 import discord
-from sys import exit
+import sys
 import yikeSnake
 
 
@@ -18,17 +18,23 @@ class Admin(commands.Cog):
         self.bot.addAdminLog('Admin Logout')
         await ctx.message.delete()
         await self.bot.change_presence(status=discord.Status.offline)
+
+        ext = self.bot.extensions.copy()
+        for x in ext:
+            if x != 'cmds.admin':
+                self.bot.unload_extension(x)
+
         await self.bot.logout()
-        exit(0)
+        self.bot.addAdminLog('Logged out')
+        self.bot.needToExit = True
+
 
     @commands.command(name='reset', hidden=True, aliases=['r'])
     @commands.is_owner()
     async def reset(self, ctx: commands.Context):
         await ctx.message.delete()
         try:
-            ext = []
-            for x in self.bot.extensions:
-                ext.append(x)
+            ext = self.bot.extensions.copy()
             for x in ext:
                 if x != 'cmds.admin':
                     self.bot.reload_extension(x)

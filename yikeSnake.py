@@ -4,7 +4,7 @@ from discord.ext import commands
 
 from utils import timeUtils
 import sys
-import asyncio
+# import asyncio
 
 from consts import ERROR_OUTPUT_MESSAGE
 
@@ -12,7 +12,12 @@ from consts import ERROR_OUTPUT_MESSAGE
 class YikeSnake(discord.ext.commands.Bot):
 
     def __init__(self, logFile, backupFolder, waitTime, backupTime):
-        super().__init__(command_prefix='_', case_insensitive=True)
+        intent = discord.Intents.none()
+        intent.members = True
+        intent.guilds = True
+        intent.guild_messages = True
+        intent.guild_reactions = True
+        super().__init__(command_prefix='_', case_insensitive=True, intents=intent)
 
         startTime = timeUtils.readDate(timeUtils.getCurrentTime())
         if logFile is not None:
@@ -25,6 +30,8 @@ class YikeSnake(discord.ext.commands.Bot):
         self.lastCmd: int = 0
         self.backupFolder = backupFolder
         self.backupTime = backupTime
+        self.needToExit = False
+
 
     def addAdminLog(self, message: str):
         output = f'{timeUtils.readDate(timeUtils.getCurrentTime())}: {message}'
@@ -41,6 +48,7 @@ class YikeSnake(discord.ext.commands.Bot):
             self.previousMessages.append(x.id)
 
     async def on_member_join(self, member):
+        # Intentionally left blank
         pass
 
     async def on_ready(self):
@@ -58,3 +66,7 @@ class YikeSnake(discord.ext.commands.Bot):
     @staticmethod
     async def on_command(ctx: commands.Context):
         pass
+
+    async def on_command_completion(self, ctx: commands.Context):
+        if self.needToExit:
+            sys.exit(0)

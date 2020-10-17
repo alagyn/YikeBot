@@ -1,6 +1,7 @@
 # quote.py
 
 from discord.ext import commands
+from discord.ext import tasks
 import discord
 import json
 import typing
@@ -75,10 +76,15 @@ class Quote(commands.Cog):
         self.bot = bot
         # IDK
         self._last_member = None
-        self.bot.loop.create_task(self.backupQuoteLog())
+        # self.bot.loop.create_task(self.backupQuoteLog())
+        self.backupQuoteLog.start()
 
+    def cog_unload(self):
+        # TODO handle mid backup cancel?
+        self.backupQuoteLog.cancel()
+
+    @tasks.loop()
     async def backupQuoteLog(self):
-        await self.bot.wait_until_ready()
         while not self.bot.is_closed():
             with open(self.bot.backupFolder + 'quote_backup.dat', mode='w') as f:
                 try:
@@ -89,6 +95,16 @@ class Quote(commands.Cog):
                 except FileNotFoundError:
                     self.bot.addAdminLog('No Quotes, backup skipped')
             await asyncio.sleep(self.bot.backupTime)
+
+    @backupQuoteLog.before_loop
+    async def beforeBackup(self):
+        await self.bot.wait_until_ready()
+        self.bot.addAdminLog("Quote Log backup init")
+
+    @backupQuoteLog.after_loop
+    async def onBackupCancel(self):
+        if self.backupQuoteLog.is_being_cancelled():
+            self.bot.addAdminLog("Quote Log backup shutdown")
 
     async def cog_before_invoke(self, ctx):
         # Reset the current msgs to just the new context

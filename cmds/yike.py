@@ -1,7 +1,9 @@
 # yike.py
 from discord.ext import commands
+from discord.ext import tasks
 import typing
 import discord
+import asyncio
 from asyncio import sleep
 import json
 
@@ -26,6 +28,11 @@ class Yike(commands.Cog):
         self._last_member = None
         self.previousMsgs = [discord.Message]
         self.yikeLog = {}
+        self.backupYikeLog.start()
+
+    def cog_unload(self):
+        # TODO handle mid backup cancels?
+        self.backupYikeLog.cancel()
 
     async def cog_before_invoke(self, ctx):
         self.previousMsgs = []
@@ -54,13 +61,24 @@ class Yike(commands.Cog):
             for m in g.members:
                 self.yikeLog[m.id] = 0
         self.readYikeLog()
-        self.bot.loop.create_task(self.backupYikeLog())
+        # self.bot.loop.create_task(self.backupYikeLog())
 
+    @tasks.loop()
     async def backupYikeLog(self):
         while not self.bot.is_closed():
             self.writeYikeLog(self.bot.backupFolder + 'yike_backup.dat')
             self.bot.addAdminLog('Yike Log backup complete')
             await sleep(self.bot.backupTime)
+
+    @backupYikeLog.before_loop
+    async def beforeBackup(self):
+        await self.bot.wait_until_ready()
+        self.bot.addAdminLog("Yike Log backup init")
+
+    @backupYikeLog.after_loop
+    async def onBackupCancel(self):
+        if self.backupYikeLog.is_being_cancelled():
+            self.bot.addAdminLog("Yike Log backup shutdown")
 
     # YIKE
     @commands.command(name="yike", help=YIKE_DESC, aliases=['y'],
