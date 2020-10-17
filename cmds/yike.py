@@ -3,7 +3,6 @@ from discord.ext import commands
 from discord.ext import tasks
 import typing
 import discord
-import asyncio
 from asyncio import sleep
 import json
 
@@ -51,7 +50,7 @@ class Yike(commands.Cog):
 
     @commands.Cog.listener(name='on_member_join')
     async def on_member_join(self, member: discord.Member):
-        print("Member joined")
+        self.bot.addAdminLog(f"Member joined {member.nick}")
         self.yikeLog.update({member.id: 0})
 
     @commands.Cog.listener(name='on_ready')
@@ -61,7 +60,7 @@ class Yike(commands.Cog):
             for m in g.members:
                 self.yikeLog[m.id] = 0
         self.readYikeLog()
-        # self.bot.loop.create_task(self.backupYikeLog())
+
 
     @tasks.loop()
     async def backupYikeLog(self):
