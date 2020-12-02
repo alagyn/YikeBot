@@ -68,5 +68,5 @@ class YikeSnake(discord.ext.commands.Bot):
         pass
 
     async def on_command_completion(self, ctx: commands.Context):
-        if self.needToExit:
-            sys.exit(0)
+        pass
+

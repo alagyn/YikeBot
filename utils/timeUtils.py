@@ -15,17 +15,17 @@ def readDate(date):
     month = date[1]
     mday = date[2]
 
-    if date[3] is 0:
+    if date[3] == 0:
         wday = "Mon"
-    elif date[3] is 1:
+    elif date[3] == 1:
         wday = "Tue"
-    elif date[3] is 2:
+    elif date[3] == 2:
         wday = "Wed"
-    elif date[3] is 3:
+    elif date[3] == 3:
         wday = "Thu"
-    elif date[3] is 4:
+    elif date[3] == 4:
         wday = "Fri"
-    elif date[3] is 5:
+    elif date[3] == 5:
         wday = "Sat"
     else:
         wday = "Sun"

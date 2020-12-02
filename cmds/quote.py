@@ -74,18 +74,20 @@ class Quote(commands.Cog):
         self.currentMessages = []
         # Reference to the bot
         self.bot = bot
-        # IDK
+
         self._last_member = None
-        # self.bot.loop.create_task(self.backupQuoteLog())
+
+        self.backupQuoteLog.change_interval(minutes=bot.backupTime)
         self.backupQuoteLog.start()
 
     def cog_unload(self):
         # TODO handle mid backup cancel?
-        self.backupQuoteLog.cancel()
+        # self.backupQuoteLog.cancel()
+        pass
 
     @tasks.loop()
     async def backupQuoteLog(self):
-        while not self.bot.is_closed():
+        if not self.bot.is_closed():
             with open(self.bot.backupFolder + 'quote_backup.dat', mode='w') as f:
                 try:
                     q = getQuoteListLines()
@@ -94,7 +96,6 @@ class Quote(commands.Cog):
                     self.bot.addAdminLog('QuoteLog backup complete')
                 except FileNotFoundError:
                     self.bot.addAdminLog('No Quotes, backup skipped')
-            await asyncio.sleep(self.bot.backupTime)
 
     @backupQuoteLog.before_loop
     async def beforeBackup(self):
@@ -225,8 +226,9 @@ class Quote(commands.Cog):
             with open(QUOTE_LOG, mode='a') as f:
                 f.write(f'{json.dumps(jOuput)}\n')
         except OSError:
-            self.bot.addAdminLog(f"Error writing quote, author: {ctx.author.name}, channel: {ctx.channel.name}:"
+            self.bot.addErrorLog(f"Error writing quote, author: {ctx.author.name}, channel: {ctx.channel.name}:"
                                  f" {ctx.message.content}")
+            # TOFIX raise an error
 
         await ctx.message.add_reaction(THUMBS_UP)
 

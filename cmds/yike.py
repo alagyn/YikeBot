@@ -27,11 +27,14 @@ class Yike(commands.Cog):
         self._last_member = None
         self.previousMsgs = [discord.Message]
         self.yikeLog = {}
+
+        self.backupYikeLog.change_interval(minutes=bot.backupTime)
         self.backupYikeLog.start()
 
     def cog_unload(self):
         # TODO handle mid backup cancels?
-        self.backupYikeLog.cancel()
+        # self.backupYikeLog.cancel()
+        pass
 
     async def cog_before_invoke(self, ctx):
         self.previousMsgs = []
@@ -64,10 +67,9 @@ class Yike(commands.Cog):
 
     @tasks.loop()
     async def backupYikeLog(self):
-        while not self.bot.is_closed():
+        if not self.bot.is_closed():
             self.writeYikeLog(self.bot.backupFolder + 'yike_backup.dat')
             self.bot.addAdminLog('Yike Log backup complete')
-            await sleep(self.bot.backupTime)
 
     @backupYikeLog.before_loop
     async def beforeBackup(self):

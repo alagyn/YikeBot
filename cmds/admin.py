@@ -18,14 +18,7 @@ class Admin(commands.Cog):
         await ctx.message.delete()
         await self.bot.change_presence(status=discord.Status.offline)
 
-        ext = self.bot.extensions.copy()
-        for x in ext:
-            if x != 'cmds.admin':
-                self.bot.unload_extension(x)
-
-        await self.bot.logout()
-        self.bot.addAdminLog('Logged out')
-        self.bot.needToExit = True
+        self.bot.loop.stop()
 
 
     @commands.command(name='reset', hidden=True, aliases=['r'])
