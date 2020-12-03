@@ -17,6 +17,8 @@ class YikeSnake(discord.ext.commands.Bot):
         intent.guilds = True
         intent.guild_messages = True
         intent.guild_reactions = True
+        intent.emojis = True
+        intent.voice_states = True
         super().__init__(command_prefix='_', case_insensitive=True, intents=intent)
 
         startTime = timeUtils.readDate(timeUtils.getCurrentTime())
