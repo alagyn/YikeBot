@@ -5,7 +5,8 @@ import youtube_dl
 import asyncio
 
 import yikeSnake
-import typing
+
+from consts import PAUSE_ICON, PLAY_ICON
 
 # Suppress noise about console usage from errors
 youtube_dl.utils.bug_reports_message = lambda: ''
@@ -71,7 +72,7 @@ class Music(commands.Cog):
         self.previousMsgs = []
         self.player = None
         self.vc = None
-        self.queue = []
+        self.playQueue = []
         self.send = None
 
     async def cog_command_error(self, ctx: commands.Context, error):
@@ -100,15 +101,16 @@ class Music(commands.Cog):
             raise commands.CommandError("Not in a voice channel")
 
     # TODO leave cmd info
-    @music.command(name='leave', aliases=['l', 'exit', 'yeet'])
+    @music.command(name='leave', aliases=['l', 'exit', 'yeet', 'stop'])
     async def leave(self, ctx: commands.Context):
         if self.vc is not None:
             self.vc.stop()
+            await self.vc.disconnect()
             self.vc = None
             self.player = None
-            self.queue = []
+            self.playQueue = []
             self.send = None
-        await ctx.guild.change_voice_state(channel=None)
+
 
     async def sendNowPlaying(self, ctx=None):
         out = f"Now Playing: ```{self.player.title}```"
@@ -121,21 +123,20 @@ class Music(commands.Cog):
     async def makePlayer(self, url):
         return await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
 
-    @music.command(name="play", aliases=['p'], help=PLAY_DESC, brief=PLAY_BRIEF, usage=PLAY_USAGE)
+    @music.command(name="play", aliases=[], help=PLAY_DESC, brief=PLAY_BRIEF, usage=PLAY_USAGE)
     async def play(self, ctx: commands.Context, *, url=''):
         if len(url.strip()) == 0:
-            await self.resume(ctx)
-            return
+            if self.vc is not None and self.vc.is_paused():
+                await self.resume(ctx)
+                return
+            else:
+                await ctx.send("Please provide a url or search term")
 
         if ctx.voice_client is None:
             try:
                 await self.join(ctx)
             except commands.CommandError:
                 return
-
-        if len(url) == 0:
-            await ctx.send("Please provide a Youtube URL")
-            return
 
         if self.player is None:
             self.player = await self.makePlayer(url)
@@ -145,7 +146,7 @@ class Music(commands.Cog):
             await self.sendNowPlaying(ctx)
         else:
             p = await self.makePlayer(url)
-            self.queue.insert(len(self.queue), p)
+            self.playQueue.insert(len(self.playQueue), p)
             await ctx.send(f"Queued: ```{p.title}```")
 
     def afterPlay(self, e):
@@ -153,8 +154,8 @@ class Music(commands.Cog):
             print(e)
             return
 
-        if self.vc is not None and len(self.queue) > 0:
-            self.player = self.queue.pop(0)
+        if self.vc is not None and len(self.playQueue) > 0:
+            self.player = self.playQueue.pop(0)
             self.vc.play(self.player, after=self.afterPlay)
             asyncio.run_coroutine_threadsafe(self.sendNowPlaying(), self.bot.loop)
         else:
@@ -165,23 +166,37 @@ class Music(commands.Cog):
     async def skip(self, ctx: commands.Context):
         if self.vc is not None:
             self.vc.stop()
-            if len(self.queue) > 0:
-                self.player = self.queue.pop(0)
+            if len(self.playQueue) > 0:
+                self.player = self.playQueue.pop(0)
                 self.vc.play(self.player, after=self.afterPlay)
                 await self.sendNowPlaying(ctx)
 
     # TODO pause cmd help info
-    @music.command(name='pause', aliases=[])
+    @music.command(name='pause', aliases=['p'])
     async def pause(self, ctx: commands.Context):
         if self.vc is not None and self.vc.is_playing():
             self.vc.pause()
+            await ctx.message.add_reaction(PAUSE_ICON)
 
-    @music.command(name='resume')
+    @music.command(name='resume', aliases = ['r'])
     async def resume(self, ctx: commands.Context):
         if self.vc is not None and self.vc.is_paused():
             self.vc.resume()
+            await ctx.message.add_reaction(PLAY_ICON)
 
-    # TODO print queue
+    @music.command(name='queue', aliases=['q'])
+    async def queue(self, ctx: commands.Context):
+        out = f'Now Playing: ```{self.player.title}```'
+        size = len(self.playQueue)
+        if size > 0:
+            out += 'Play Queue: ```'
+            for x in range(size):
+                out += f'{x + 1}: {self.playQueue[x].title}'
+                if x < size - 1:
+                    out += '\n'
+
+            out += ' ``` '
+        await ctx.send(out)
 
 
 def setup(bot):
