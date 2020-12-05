@@ -3,10 +3,11 @@ from discord.ext import commands
 import discord
 import youtube_dl
 import asyncio
+import typing
 
 import yikeSnake
 
-from consts import PAUSE_ICON, PLAY_ICON
+from consts import PAUSE_ICON, PLAY_ICON, THUMBS_UP
 
 # Suppress noise about console usage from errors
 youtube_dl.utils.bug_reports_message = lambda: ''
@@ -63,9 +64,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
 
 class Music(commands.Cog):
-    PLAY_DESC = 'Plays a youtube video'
-    PLAY_BRIEF = "_play <video url>"
-    PLAY_USAGE = "<video url>"
+    # TODO implement clear command capabilities
 
     def __init__(self, bot: yikeSnake.YikeSnake):
         self.bot: yikeSnake.YikeSnake = bot
@@ -75,19 +74,37 @@ class Music(commands.Cog):
         self.playQueue = []
         self.send = None
 
+        self.mutex = asyncio.Lock(loop=self.bot.loop)
+
+    def cog_unload(self):
+        print("Unload: checking for vc")
+        if self.vc is not None:
+            print("Unload: creating task")
+            self.bot.loop.create_task(self.disconnectFromVoice())
+        print("Unload: done")
+
     async def cog_command_error(self, ctx: commands.Context, error):
         if ctx.command is self.join or ctx.command is self.play:
             return
         else:
             raise error
 
-    @commands.group(name='music', aliases=['m'], invoke_without_command=True)
+    MUSIC_HELP = 'Commands to play music in a voice channel, calling with no sub command activates the play command'
+    MUSIC_BRIEF = 'Commands to play music'
+
+    @commands.group(name='music', aliases=['m'], invoke_without_command=True, help=MUSIC_HELP, brief=MUSIC_BRIEF)
     async def music(self, ctx: commands.Context, *, args=''):
         await self.play(ctx, url=args)
 
-    # TODO join help info
-    @music.command(name="join", aliases=['j'], help="Joins the bot to your current voice channel")
+    JOIN_HELP = 'Connects the bot to your current voice channel'
+
+    @music.command(name="join", aliases=['j'], help=JOIN_HELP)
     async def join(self, ctx: commands.Context):
+        async with self.mutex:
+            await Music.connectToChannel(ctx)
+
+    @staticmethod
+    async def connectToChannel(ctx: commands.context):
         if ctx.author.voice is not None:
             channel = ctx.author.voice.channel
             if ctx.voice_client is None:
@@ -100,16 +117,27 @@ class Music(commands.Cog):
             await ctx.send("You must be in a voice channel to use this command")
             raise commands.CommandError("Not in a voice channel")
 
-    # TODO leave cmd info
-    @music.command(name='leave', aliases=['l', 'exit', 'yeet', 'stop'])
-    async def leave(self, ctx: commands.Context):
+    LEAVE_HELP = 'Disconnects the bot and stops playback. Clears the playback queue'
+    LEAVE_BRIEF = 'Disconnects the bot and stops playback'
+
+    @music.command(name='leave', aliases=['l', 'exit', 'yeet', 'stop'], help=LEAVE_HELP, brief=LEAVE_BRIEF)
+    async def leave(self, ctx: commands.Context = None):
+        async with self.mutex:
+            await self.disconnectFromVoice()
+            
+
+    async def disconnectFromVoice(self):
+        print("Discon: checking vc")
         if self.vc is not None:
+            print("Discon: stopping")
             self.vc.stop()
+            print("Discon: disconnecting")
             await self.vc.disconnect()
             self.vc = None
             self.player = None
             self.playQueue = []
             self.send = None
+            print("Discon: done")
 
 
     async def sendNowPlaying(self, ctx=None):
@@ -123,80 +151,132 @@ class Music(commands.Cog):
     async def makePlayer(self, url):
         return await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
 
-    @music.command(name="play", aliases=[], help=PLAY_DESC, brief=PLAY_BRIEF, usage=PLAY_USAGE)
+    PLAY_HELP = 'Plays a YouTube url or search query. ' \
+                'Calling this command with no arguments emulates the resume command'
+    PLAY_BRIEF = 'Plays a url or search query'
+
+    @music.command(name="play", aliases=[], help=PLAY_HELP, brief=PLAY_BRIEF)
     async def play(self, ctx: commands.Context, *, url=''):
-        if len(url.strip()) == 0:
-            if self.vc is not None and self.vc.is_paused():
-                await self.resume(ctx)
-                return
+        print("Play: acquiring mutex")
+        async with self.mutex:
+            print("Play: mutex acquired")
+            if len(url.strip()) == 0:
+                if self.vc is not None and self.vc.is_paused():
+                    await self.resume(ctx)
+                    return
+                else:
+                    await ctx.send("Please provide a url or search term")
+
+            if ctx.voice_client is None:
+                try:
+                    await Music.connectToChannel(ctx)
+                except commands.CommandError:
+                    return
+
+            if self.player is None:
+                print("Play: playing url")
+                self.player = await self.makePlayer(url)
+                self.vc = ctx.voice_client
+                self.vc.play(self.player, after=self.afterPlay)
+                self.send = ctx.send
+                await self.sendNowPlaying(ctx)
             else:
-                await ctx.send("Please provide a url or search term")
+                print("Play: adding to queue")
+                p = await self.makePlayer(url)
+                self.playQueue.insert(len(self.playQueue), p)
+                await ctx.send(f"Queued: ```{p.title}```")
 
-        if ctx.voice_client is None:
-            try:
-                await self.join(ctx)
-            except commands.CommandError:
-                return
-
-        if self.player is None:
-            self.player = await self.makePlayer(url)
-            self.vc = ctx.voice_client
-            self.vc.play(self.player, after=self.afterPlay)
-            self.send = ctx.send
-            await self.sendNowPlaying(ctx)
-        else:
-            p = await self.makePlayer(url)
-            self.playQueue.insert(len(self.playQueue), p)
-            await ctx.send(f"Queued: ```{p.title}```")
+        print("Play: done")
 
     def afterPlay(self, e):
         if e is not None:
             print(e)
             return
 
-        if self.vc is not None and len(self.playQueue) > 0:
+        print("After: acquiring")
+        asyncio.run_coroutine_threadsafe(self.mutex.acquire(), self.bot.loop).result()
+        print("After: executing")
+        if self.vc is not None and self.vc.is_connected() and len(self.playQueue) > 0:
             self.player = self.playQueue.pop(0)
             self.vc.play(self.player, after=self.afterPlay)
-            asyncio.run_coroutine_threadsafe(self.sendNowPlaying(), self.bot.loop)
+
+            asyncio.run_coroutine_threadsafe(self.sendNowPlaying(), self.bot.loop).result()
+
         else:
             self.player = None
 
-    # TODO skip cmd help info
-    @music.command(name='skip', aliases=['next', 'n'])
+        print("After: releasing")
+        self.mutex.release()
+        print(f"After: done, locked: {self.mutex.locked()}")
+
+    SKIP_HELP = 'Skips the current playback item and plays the next item in the queue'
+    SKIP_BRIEF = 'Skips the current playback item'
+
+    @music.command(name='skip', aliases=['next', 'n'], help=SKIP_HELP, brief=SKIP_BRIEF)
     async def skip(self, ctx: commands.Context):
-        if self.vc is not None:
-            self.vc.stop()
-            if len(self.playQueue) > 0:
-                self.player = self.playQueue.pop(0)
-                self.vc.play(self.player, after=self.afterPlay)
-                await self.sendNowPlaying(ctx)
+        async with self.mutex:
+            if self.vc is not None:
+                print("Skip: stopping")
+                self.vc.stop()
 
-    # TODO pause cmd help info
-    @music.command(name='pause', aliases=['p'])
+    PAUSE_HELP = 'Pauses the current playback'
+
+    @music.command(name='pause', aliases=['p'], help=PAUSE_HELP)
     async def pause(self, ctx: commands.Context):
-        if self.vc is not None and self.vc.is_playing():
-            self.vc.pause()
-            await ctx.message.add_reaction(PAUSE_ICON)
+        async with self.mutex:
+            if self.vc is not None and self.vc.is_playing():
+                self.vc.pause()
+                await ctx.message.add_reaction(PAUSE_ICON)
 
-    @music.command(name='resume', aliases = ['r'])
+    RESUME_HELP = 'Resumes the current playback'
+
+    @music.command(name='resume', aliases=['r'], help=RESUME_HELP)
     async def resume(self, ctx: commands.Context):
-        if self.vc is not None and self.vc.is_paused():
-            self.vc.resume()
-            await ctx.message.add_reaction(PLAY_ICON)
+        async with self.mutex:
+            if self.vc is not None and self.vc.is_paused():
+                self.vc.resume()
+                await ctx.message.add_reaction(PLAY_ICON)
 
-    @music.command(name='queue', aliases=['q'])
+    QUEUE_HELP = 'Prints the current playback queue'
+
+    @music.command(name='queue', aliases=['q'], help=QUEUE_HELP)
     async def queue(self, ctx: commands.Context):
-        out = f'Now Playing: ```{self.player.title}```'
-        size = len(self.playQueue)
-        if size > 0:
-            out += 'Play Queue: ```'
-            for x in range(size):
-                out += f'{x + 1}: {self.playQueue[x].title}'
-                if x < size - 1:
-                    out += '\n'
+        async with self.mutex:
+            out = ''
+            if self.player is not None:
+                out += f'Now Playing: ```{self.player.title}```'
 
-            out += ' ``` '
-        await ctx.send(out)
+            size = len(self.playQueue)
+            if size > 0:
+                out += 'Play Queue: ```'
+                for x in range(size):
+                    out += f'{x + 1}: {self.playQueue[x].title}'
+                    if x < size - 1:
+                        out += '\n'
+
+                out += ' ``` '
+
+            if len(out) != 0:
+                await ctx.send(out)
+            else:
+                await ctx.send("Nothing is playing")
+
+    @music.command(name='remove', aliases=['rm'])
+    async def remove(self, ctx: commands.Context, idx: typing.Optional[int] = 0):
+        async with self.mutex:
+            size = len(self.playQueue)
+            if size > 0:
+                if 0 <= idx <= size:
+                    if idx < 1:
+                        self.playQueue.pop(size - 1)
+                    elif 1 <= idx <= size:
+                        self.playQueue.pop(idx - 1)
+
+                    await ctx.message.add_reaction(THUMBS_UP)
+                else:
+                    await ctx.send("Invalid index")
+            else:
+                await ctx.send("Queue is empty")
 
 
 def setup(bot):
