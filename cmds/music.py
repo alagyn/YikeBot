@@ -77,11 +77,8 @@ class Music(commands.Cog):
         self.mutex = asyncio.Lock(loop=self.bot.loop)
 
     def cog_unload(self):
-        print("Unload: checking for vc")
         if self.vc is not None:
-            print("Unload: creating task")
             self.bot.loop.create_task(self.disconnectFromVoice())
-        print("Unload: done")
 
     async def cog_command_error(self, ctx: commands.Context, error):
         if ctx.command is self.join or ctx.command is self.play:
@@ -124,21 +121,15 @@ class Music(commands.Cog):
     async def leave(self, ctx: commands.Context = None):
         async with self.mutex:
             await self.disconnectFromVoice()
-            
 
     async def disconnectFromVoice(self):
-        print("Discon: checking vc")
         if self.vc is not None:
-            print("Discon: stopping")
             self.vc.stop()
-            print("Discon: disconnecting")
             await self.vc.disconnect()
             self.vc = None
             self.player = None
             self.playQueue = []
             self.send = None
-            print("Discon: done")
-
 
     async def sendNowPlaying(self, ctx=None):
         out = f"Now Playing: ```{self.player.title}```"
@@ -157,9 +148,7 @@ class Music(commands.Cog):
 
     @music.command(name="play", aliases=[], help=PLAY_HELP, brief=PLAY_BRIEF)
     async def play(self, ctx: commands.Context, *, url=''):
-        print("Play: acquiring mutex")
         async with self.mutex:
-            print("Play: mutex acquired")
             if len(url.strip()) == 0:
                 if self.vc is not None and self.vc.is_paused():
                     await self.resume(ctx)
@@ -174,28 +163,23 @@ class Music(commands.Cog):
                     return
 
             if self.player is None:
-                print("Play: playing url")
                 self.player = await self.makePlayer(url)
                 self.vc = ctx.voice_client
                 self.vc.play(self.player, after=self.afterPlay)
                 self.send = ctx.send
                 await self.sendNowPlaying(ctx)
             else:
-                print("Play: adding to queue")
                 p = await self.makePlayer(url)
                 self.playQueue.insert(len(self.playQueue), p)
                 await ctx.send(f"Queued: ```{p.title}```")
-
-        print("Play: done")
 
     def afterPlay(self, e):
         if e is not None:
             print(e)
             return
 
-        print("After: acquiring")
         asyncio.run_coroutine_threadsafe(self.mutex.acquire(), self.bot.loop).result()
-        print("After: executing")
+
         if self.vc is not None and self.vc.is_connected() and len(self.playQueue) > 0:
             self.player = self.playQueue.pop(0)
             self.vc.play(self.player, after=self.afterPlay)
@@ -205,9 +189,7 @@ class Music(commands.Cog):
         else:
             self.player = None
 
-        print("After: releasing")
         self.mutex.release()
-        print(f"After: done, locked: {self.mutex.locked()}")
 
     SKIP_HELP = 'Skips the current playback item and plays the next item in the queue'
     SKIP_BRIEF = 'Skips the current playback item'
@@ -216,7 +198,6 @@ class Music(commands.Cog):
     async def skip(self, ctx: commands.Context):
         async with self.mutex:
             if self.vc is not None:
-                print("Skip: stopping")
                 self.vc.stop()
 
     PAUSE_HELP = 'Pauses the current playback'
