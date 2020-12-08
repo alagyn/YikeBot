@@ -24,10 +24,6 @@ ytdl_format_options = {
     'no_warnings': True,
     'default_search': 'auto',
     'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes,
-    'keepvideo': False,
-    'skip_download': True,
-    'hls_use_mpegts': True,
-    'nopart': True
 }
 
 # TODO enable loglevel
@@ -40,7 +36,12 @@ ffmpeg_options = {
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 
+class YTDLException(Exception):
+    pass
+
+
 class YTDLSource(discord.PCMVolumeTransformer):
+
     def __init__(self, source, *, data, volume=0.5):
         super().__init__(source, volume)
 
@@ -50,17 +51,52 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.url = data.get('url')
 
     @classmethod
-    async def from_url(cls, url, *, loop=None, stream=False):
+    async def from_url(cls, query, *, loop=None):
+        # TODO update exception msgs
+
         loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
+        # Search for query
+        data = ytdl.extract_info(query, download=False, process=False)
+
+        if data is None:
+            raise YTDLException("Query not found")
+
+        info = None
+
+        # Get first video in playlist
         if 'entries' in data:
-            # take first item from a playlist
-            data = data['entries'][0]
+            for entry in data['entries']:
+                if entry:
+                    info = entry
+                    break
+        else:
+            info = data
 
-        filename = data['url'] if stream else ytdl.prepare_filename(data)
-        print(filename)
-        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+        if info is None:
+            raise YTDLException("Query not found")
+
+        url = info['webpage_url'] if 'webpage_url' in info else query
+        print(url)
+
+        # Process the query
+        processedInfo = ytdl.extract_info(url, download=False)
+
+        if processedInfo is None:
+            raise YTDLException("Cannot fetch video")
+
+        # Get first video again
+        if 'entries' not in processedInfo:
+            info = processedInfo
+        else:
+            info = None
+            while info is None:
+                try:
+                    info = processedInfo['entries'].pop(0)
+                except IndexError:
+                    raise YTDLException("Query not found")
+
+        return cls(discord.FFmpegPCMAudio(info['url'], **ffmpeg_options), data=info)
 
 
 class Music(commands.Cog):
@@ -140,7 +176,7 @@ class Music(commands.Cog):
             await self.send(out)
 
     async def makePlayer(self, url):
-        return await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
+        return await YTDLSource.from_url(url, loop=self.bot.loop)
 
     PLAY_HELP = 'Plays a YouTube url or search query. ' \
                 'Calling this command with no arguments emulates the resume command'
