@@ -31,7 +31,8 @@ if __name__ == "__main__":
     curBot.load_extension('cmds.admin')
     curBot.load_extension('cmds.yike')
     curBot.load_extension('cmds.quote')
-    curBot.load_extension('cmds.util')
+    # TODO update clear cmd
+    # curBot.load_extension('cmds.util')
     curBot.load_extension('cmds.music')
 
     curBot.run(token)
