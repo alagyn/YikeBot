@@ -82,7 +82,7 @@ class Quote(commands.Cog):
 
     def cog_unload(self):
         # TODO handle mid backup cancel?
-        # self.backupQuoteLog.cancel()
+        self.backupQuoteLog.cancel()
         pass
 
     @tasks.loop()

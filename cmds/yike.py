@@ -33,7 +33,7 @@ class Yike(commands.Cog):
 
     def cog_unload(self):
         # TODO handle mid backup cancels?
-        # self.backupYikeLog.cancel()
+        self.backupYikeLog.cancel()
         pass
 
     async def cog_before_invoke(self, ctx):
@@ -97,8 +97,10 @@ class Yike(commands.Cog):
         self.bot.addAdminLog(f'Yike of {user} initiated by {ctx.author} '
                              f'in channel {ctx.channel.name} : {ctx.message.content}')
 
-        self.previousMsgs = [await ctx.send(f'{user.display_name}... <:yike:{YIKE_EMOJI_ID}>\n'
-                                            f'You now have {self.yikeLog[user.id]} yikes')]
+        embed = discord.Embed(
+            title=f'{user.display_name} now has {self.yikeLog[user.id]} yikes'
+        )
+        self.previousMsgs = [await ctx.send(f'<:yike:{YIKE_EMOJI_ID}>', embed=embed)]
 
     # UNYIKE
     @commands.command(name="unyike", help=UNYIKE_USAGE, aliases=['uy'],
