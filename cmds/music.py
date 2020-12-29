@@ -288,6 +288,8 @@ class Music(commands.Cog):
                                 value=self.player.title,
                                 inline=False)
 
+
+            # TODO limit queue printout length
             size = len(self.playQueue)
             if size > 0:
                 q = ''

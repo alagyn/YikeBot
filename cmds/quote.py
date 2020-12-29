@@ -115,12 +115,16 @@ class Quote(commands.Cog):
         # Sets the previous set msgs in the bot
         self.bot.setPreviousMsgs(self.currentMessages, ctx)
 
-    async def sendConfirmMsg(self, ctx: commands.Context, msg) -> bool:
+    async def sendConfirmMsg(self, ctx: commands.Context, title, msg) -> bool:
         def check(m_reaction, m_user):
             return (m_user.__eq__(ctx.message.author) and
                     (str(m_reaction.emoji) == CHECK_MARK or str(m_reaction.emoji) == X_MARK))
 
-        confirm = await ctx.send(msg + f'\nSelect :white_check_mark: to submit, :x: to cancel')
+        embed = discord.Embed(
+            title=title,
+            description=msg + f'\nSelect :white_check_mark: to submit, :x: to cancel'
+        )
+        confirm = await ctx.send(embed=embed)
 
         await confirm.add_reaction(CHECK_MARK)
         await confirm.add_reaction(X_MARK)
@@ -150,9 +154,9 @@ class Quote(commands.Cog):
 
         author = discord.utils.get(ctx.guild.members, id=int(quote[Q_ID_IDX]))
         author = author.display_name
-        response = await self.sendConfirmMsg(ctx, f'Delete this quote?:\n'
-                                                  f'``` Author: {author}\n'
-                                                  f'{quote[Q_CONTENT_IDX]} ```')
+        response = await self.sendConfirmMsg(ctx, f'Delete this quote?',
+                                             f'Author: {author}\n'
+                                             f'``` {quote[Q_CONTENT_IDX]} ```')
 
         if response:
             q_list.pop(index)
@@ -181,10 +185,10 @@ class Quote(commands.Cog):
 
         oldQuote = json.loads(lines[toEdit])
 
-        response = await self.sendConfirmMsg(ctx, f'Old quote:\n'
-                                                  f'``` {oldQuote[Q_CONTENT_IDX]} ```\n'
-                                                  f'New quote:\n\n'
-                                                  f'``` {arg} ```')
+        response = await self.sendConfirmMsg(ctx, 'Edit Quote', f'Old quote:\n'
+                                                                f'``` {oldQuote[Q_CONTENT_IDX]} ```\n'
+                                                                f'New quote:\n\n'
+                                                                f'``` {arg} ```')
 
         if response:
             oldQuote[Q_CONTENT_IDX] = arg
@@ -194,7 +198,7 @@ class Quote(commands.Cog):
         else:
             await ctx.message.add_reaction(THUMBS_DOWN)
 
-    @commands.command(name="quote", rest_is_raw=True, brief=QUOTE_BRIEF, usage=QUOTE_USAGE, help=QUOTE_HELP)
+    @commands.command(name="quote", aliases=['q'], rest_is_raw=True, brief=QUOTE_BRIEF, usage=QUOTE_USAGE, help=QUOTE_HELP)
     async def quote(self, ctx: commands.Context, *, arg: str):
         # Retrieve a new UserConverter
         converter = commands.UserConverter()
