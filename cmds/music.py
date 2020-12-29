@@ -9,6 +9,14 @@ import yikeSnake
 
 from consts import PAUSE_ICON, PLAY_ICON, THUMBS_UP
 
+OPTIONS = {
+    "1️⃣": 0,
+    "2⃣": 1,
+    "3⃣": 2,
+    "4⃣": 3,
+    "5⃣": 4,
+}
+
 # Suppress noise about console usage from errors
 youtube_dl.utils.bug_reports_message = lambda: ''
 
@@ -22,7 +30,7 @@ ytdl_format_options = {
     'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
-    'default_search': 'auto',
+    'default_search': 'ytsearch:',
     'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes,
 }
 
@@ -51,52 +59,58 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.url = data.get('url')
 
     @classmethod
-    async def from_url(cls, query, *, loop=None):
+    async def choose_track(cls, ctx: commands.Context, tracks):
+
+        if len(tracks) > 1:
+            embed = discord.Embed(
+                title='Choose A Result',
+                description=f''.join(f'{i + 1}: "{x["title"]}"\n' for i, x in enumerate(tracks[:5]))
+            )
+
+            msg = await ctx.send(embed=embed)
+            size = min(5, len(tracks))
+
+            for emoji in list(OPTIONS.keys())[:size]:
+                await msg.add_reaction(emoji)
+
+            def msgCheck(r: discord.Reaction, u: discord.User):
+                return r.message.id == msg.id and r.emoji in OPTIONS.keys() and u == ctx.author
+
+            try:
+                reaction, _ = await ctx.bot.wait_for('reaction_add', timeout=60, check=msgCheck)
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.message.delete()
+                return None
+            else:
+                await msg.delete()
+                return tracks[OPTIONS[reaction.emoji]]
+        else:
+            return tracks[0]
+
+
+    @classmethod
+    async def from_url(cls, ctx: commands.Context, query, *, loop=None):
         # TODO update exception msgs
 
         loop = loop or asyncio.get_event_loop()
 
-        # Search for query
-        data = ytdl.extract_info(query, download=False, process=False)
-
-        if data is None:
-            raise YTDLException("Query not found")
-
-        info = None
-
-        # Get first video in playlist
-        if 'entries' in data:
-            for entry in data['entries']:
-                if entry:
-                    info = entry
-                    break
-        else:
-            info = data
-
-        if info is None:
-            raise YTDLException("Query not found")
-
-        url = info['webpage_url'] if 'webpage_url' in info else query
-        print(url)
-
         # Process the query
-        processedInfo = ytdl.extract_info(url, download=False)
+        processedInfo = ytdl.extract_info(query, download=False)
 
         if processedInfo is None:
             raise YTDLException("Cannot fetch video")
 
-        # Get first video again
-        if 'entries' not in processedInfo:
-            info = processedInfo
-        else:
-            info = None
-            while info is None:
-                try:
-                    info = processedInfo['entries'].pop(0)
-                except IndexError:
-                    raise YTDLException("Query not found")
+        track = None
+        if 'entries' in processedInfo:
+            tracks = processedInfo['entries']
+            if len(tracks) > 0:
+                track = await cls.choose_track(ctx, tracks)
 
-        return cls(discord.FFmpegPCMAudio(info['url'], **ffmpeg_options), data=info)
+        if track is None:
+            track = processedInfo
+
+        return cls(discord.FFmpegPCMAudio(track['url'], **ffmpeg_options), data=track)
 
 
 class Music(commands.Cog):
@@ -168,15 +182,19 @@ class Music(commands.Cog):
             self.send = None
 
     async def sendNowPlaying(self, ctx=None):
-        out = f"Now Playing: ```{self.player.title}```"
+
+        embed = discord.Embed(
+            title='Now Playing',
+            description=self.player.title
+        )
 
         if ctx is not None:
-            await ctx.send(out)
+            await ctx.send(embed=embed)
         elif self.send is not None:
-            await self.send(out)
+            await self.send(embed=embed)
 
-    async def makePlayer(self, url):
-        return await YTDLSource.from_url(url, loop=self.bot.loop)
+    async def makePlayer(self, ctx, url):
+        return await YTDLSource.from_url(url, ctx, loop=self.bot.loop)
 
     PLAY_HELP = 'Plays a YouTube url or search query. ' \
                 'Calling this command with no arguments emulates the resume command'
@@ -187,7 +205,8 @@ class Music(commands.Cog):
         async with self.mutex:
             if len(url.strip()) == 0:
                 if self.vc is not None and self.vc.is_paused():
-                    await self.resume(ctx)
+                    self.vc.resume()
+                    await ctx.message.add_reaction(PLAY_ICON)
                     return
                 else:
                     await ctx.send("Please provide a url or search term")
@@ -199,15 +218,19 @@ class Music(commands.Cog):
                     return
 
             if self.player is None:
-                self.player = await self.makePlayer(url)
+                self.player = await self.makePlayer(url, ctx)
                 self.vc = ctx.voice_client
                 self.vc.play(self.player, after=self.afterPlay)
                 self.send = ctx.send
                 await self.sendNowPlaying(ctx)
             else:
-                p = await self.makePlayer(url)
+                p = await self.makePlayer(url, ctx)
                 self.playQueue.insert(len(self.playQueue), p)
-                await ctx.send(f"Queued: ```{p.title}```")
+                embed = discord.Embed(
+                    title='Queued',
+                    description=p.title
+                )
+                await ctx.send(embed=embed)
 
     def afterPlay(self, e):
         if e is not None:
@@ -259,24 +282,27 @@ class Music(commands.Cog):
     @music.command(name='queue', aliases=['q'], help=QUEUE_HELP)
     async def queue(self, ctx: commands.Context):
         async with self.mutex:
-            out = ''
+            embed = discord.Embed()
             if self.player is not None:
-                out += f'Now Playing: ```{self.player.title}```'
+                embed.add_field(name='Now Playing',
+                                value=self.player.title,
+                                inline=False)
 
             size = len(self.playQueue)
             if size > 0:
-                out += 'Play Queue: ```'
+                q = ''
                 for x in range(size):
-                    out += f'{x + 1}: {self.playQueue[x].title}'
+                    q += f'{x + 1}: {self.playQueue[x].title}'
                     if x < size - 1:
-                        out += '\n'
+                        q += '\n'
 
-                out += ' ``` '
+                embed.add_field(name='Queue:',
+                                value=q)
 
-            if len(out) != 0:
-                await ctx.send(out)
-            else:
-                await ctx.send("Nothing is playing")
+            if len(embed.fields) == 0:
+                embed = discord.Embed(title='Nothing Is Playing')
+
+            await ctx.send(embed=embed)
 
     @music.command(name='remove', aliases=['rm'])
     async def remove(self, ctx: commands.Context, idx: typing.Optional[int] = 0):
