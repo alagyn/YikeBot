@@ -96,6 +96,7 @@ class Yike(commands.Cog):
         self.yikeLog[user.id] += amnt
         self.bot.addAdminLog(f'Yike of {user} initiated by {ctx.author} '
                              f'in channel {ctx.channel.name} : {ctx.message.content}')
+
         self.previousMsgs = [await ctx.send(f'{user.display_name}... <:yike:{YIKE_EMOJI_ID}>\n'
                                             f'You now have {self.yikeLog[user.id]} yikes')]
 
@@ -166,9 +167,40 @@ class Yike(commands.Cog):
     async def list(self, ctx, user: typing.Optional[discord.Member] = None):
         output = ''
 
+        class TempItem:
+            def __init__(self, name: str, _amnt: int):
+                self.name = name
+                self.amnt = _amnt
+
+            def __gt__(self, other):
+                if self.amnt > other.amnt:
+                    return False
+
+                if self.amnt < other.amnt:
+                    return True
+
+                return self.name > other.name
+
+            def __lt__(self, other):
+                if self.amnt < other.amnt:
+                    return False
+
+                if self.amnt > other.amnt:
+                    return True
+
+                return self.name < other.name
+
+
+        temp = []
         if user is None:
             for m in ctx.guild.members:
-                output += f'{m.display_name}: {self.yikeLog[m.id]}\n'
+                amnt = self.yikeLog[m.id]
+                if amnt > 0:
+                    temp.append(TempItem(m.display_name, amnt))
+
+            temp.sort()
+            for m in temp:
+                output += f'{m.name}: {m.amnt}\n'
         else:
             output = f'{user.display_name} has {self.yikeLog[user.id]}'
 
