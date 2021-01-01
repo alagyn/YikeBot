@@ -36,8 +36,8 @@ ytdl_format_options = {
 
 # TODO enable loglevel
 ffmpeg_options = {
-    # 'options': '-vn -loglevel fatal'
-    'options': '-vn',
+    'options': '-vn -loglevel fatal',
+    # 'options': '-vn',
     'before_options': " -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -multiple_requests 1"
 }
 
