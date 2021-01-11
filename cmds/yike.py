@@ -105,7 +105,7 @@ class Yike(commands.Cog):
     # UNYIKE
     @commands.command(name="unyike", help=UNYIKE_USAGE, aliases=['uy'],
                       brief='_unyike <user> [amount] [option]', usage='<user> [amount] [option]')
-    async def unYike(self, ctx, user: discord.Member, amnt=1, option=''):
+    async def unYike(self, ctx, user: discord.Member, amnt: typing.Optional[int] = 1, option=''):
         # Check for zero yikes
         if self.yikeLog[user.id] == 0:
             self.previousMsgs = [await ctx.send("NO NEGATIVE YIKES\nYou cheeky monkey")]
