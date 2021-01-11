@@ -108,7 +108,7 @@ class Yike(commands.Cog):
     async def unYike(self, ctx, user: discord.Member, amnt: typing.Optional[int] = 1, option=''):
         # Check for zero yikes
         if self.yikeLog[user.id] == 0:
-            self.previousMsgs = [await ctx.send("NO NEGATIVE YIKES\nYou cheeky monkey")]
+            self.previousMsgs = [await ctx.send(embed=discord.Embed(title="NO NEGATIVE YIKES\nYou cheeky monkey"))]
             return
 
         # TODO update voter to use an embed
@@ -118,7 +118,8 @@ class Yike(commands.Cog):
                 return
 
             # Send voter yikes
-            voter: discord.Message = await ctx.send("The legion shall decide your fate")
+            embed = discord.Embed(title='The legion shall decide your fate')
+            voter: discord.Message = await ctx.send(embed=embed)
 
             await voter.add_reaction(THUMBS_UP)
             await voter.add_reaction(THUMBS_DOWN)
@@ -154,8 +155,13 @@ class Yike(commands.Cog):
                 self.previousMsgs = [await ctx.send("The yike shall stand")]
             else:
                 self.yikeLog[user.id] -= amnt
-                self.previousMsgs = [await ctx.send(f"{user.display_name}, you have been forgiven\n"
-                                                    f"you now have {str(self.yikeLog[user.id])}")]
+                cur = self.yikeLog[user.id]
+                embed = discord.Embed(
+                    title=f'{user.display_name}, you have been forgiven',
+                    description=f'You now have {str(cur)} {"yike" if cur == 1 else "yikes"}'
+                )
+                self.previousMsgs = [await ctx.send(embed=embed)]
+
         elif option == '-a':
             # Admin option
             if ctx.message.author.guild_permissions.administrator:
