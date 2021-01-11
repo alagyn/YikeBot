@@ -106,9 +106,6 @@ class Yike(commands.Cog):
     @commands.command(name="unyike", help=UNYIKE_USAGE, aliases=['uy'],
                       brief='_unyike <user> [amount] [option]', usage='<user> [amount] [option]')
     async def unYike(self, ctx, user: discord.Member, amnt=1, option=''):
-        if await self.checkChannel(ctx):
-            return
-
         # Check for zero yikes
         if self.yikeLog[user.id] == 0:
             self.previousMsgs = [await ctx.send("NO NEGATIVE YIKES\nYou cheeky monkey")]
@@ -117,6 +114,9 @@ class Yike(commands.Cog):
         # TODO update voter to use an embed
 
         if option == '':
+            if await self.checkChannel(ctx):
+                return
+
             # Send voter yikes
             voter: discord.Message = await ctx.send("The legion shall decide your fate")
 
