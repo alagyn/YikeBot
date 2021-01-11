@@ -19,7 +19,7 @@ class Yike(commands.Cog):
                      "channels not visible to at least half the server"
     YIKE_DESC = "Adds one or more Yikes to a user"
     YIKE_USAGE = '<user> [amount]'
-    UNYIKE_USAGE = "Removes one or more Yikes from a user"
+    UNYIKE_USAGE = "Removes one or more Yikes from a user, -a option for admin unyike"
     LIST_DESC = 'Lists the yikes for every user or a single user'
 
     def __init__(self, bot: yikeSnake.YikeSnake):
@@ -84,7 +84,7 @@ class Yike(commands.Cog):
     # YIKE
     @commands.command(name="yike", help=YIKE_DESC, aliases=['y'],
                       brief='_yike <user> [amount]', usage='<user> [amount]')
-    async def yike(self, ctx, user: discord.Member, amnt=1):
+    async def yike(self, ctx, user: discord.Member, amnt=1, option=''):
         # Check the channel for correct users
         if await self.checkChannel(ctx):
             return
@@ -104,8 +104,8 @@ class Yike(commands.Cog):
 
     # UNYIKE
     @commands.command(name="unyike", help=UNYIKE_USAGE, aliases=['uy'],
-                      brief='_unyike <user> [amount]', usage='<user> [amount]')
-    async def unYike(self, ctx, user: discord.Member, amnt=1):
+                      brief='_unyike <user> [amount] [option]', usage='<user> [amount] [option]')
+    async def unYike(self, ctx, user: discord.Member, amnt=1, option=''):
         if await self.checkChannel(ctx):
             return
 
@@ -114,45 +114,66 @@ class Yike(commands.Cog):
             self.previousMsgs = [await ctx.send("NO NEGATIVE YIKES\nYou cheeky monkey")]
             return
 
-        # Send voter yikes
-        voter: discord.Message = await ctx.send("The legion shall decide your fate")
+        # TODO update voter to use an embed
 
-        await voter.add_reaction(THUMBS_UP)
-        await voter.add_reaction(THUMBS_DOWN)
+        if option == '':
+            # Send voter yikes
+            voter: discord.Message = await ctx.send("The legion shall decide your fate")
 
-        await sleep(self.bot.waitTime)
+            await voter.add_reaction(THUMBS_UP)
+            await voter.add_reaction(THUMBS_DOWN)
 
-        cacheMsg: discord.Message = discord.utils.get(self.bot.cached_messages, id=voter.id)
-        up = 0
-        down = 0
-        upVoters = ''
-        downVoters = ''
+            await sleep(self.bot.waitTime)
 
-        # Count reactions
-        for x in cacheMsg.reactions:
-            if x.emoji == THUMBS_UP:
-                up = x.count
-                users = await x.users().flatten()
-                for u in users:
-                    upVoters += u.name + '  '
-            elif x.emoji == THUMBS_DOWN:
-                down = x.count
-                users = await x.users().flatten()
-                for u in users:
-                    downVoters += u.name + '  '
+            cacheMsg: discord.Message = discord.utils.get(self.bot.cached_messages, id=voter.id)
+            up = 0
+            down = 0
+            upVoters = ''
+            downVoters = ''
 
-        self.bot.addAdminLog(f'Unyike of {user} initiated by {ctx.author} in channel "{ctx.channel.name}"'
-                             f' : {ctx.message.content}\n'
-                             f'\tUpVotes: {upVoters}\n\tDownVotes: {downVoters}')
-        await cacheMsg.delete()
+            # Count reactions
+            for x in cacheMsg.reactions:
+                if x.emoji == THUMBS_UP:
+                    up = x.count
+                    users = await x.users().flatten()
+                    for u in users:
+                        upVoters += u.name + '  '
+                elif x.emoji == THUMBS_DOWN:
+                    down = x.count
+                    users = await x.users().flatten()
+                    for u in users:
+                        downVoters += u.name + '  '
 
-        # Unyike if upvotes are at least 2 greater
-        if down + 1 >= up:
-            self.previousMsgs = [await ctx.send("The yike shall stand")]
+            self.bot.addAdminLog(f'Unyike of {user} initiated by {ctx.author} in channel "{ctx.channel.name}"'
+                                 f' : {ctx.message.content}\n'
+                                 f'\tUpVotes: {upVoters}\n\tDownVotes: {downVoters}')
+            await cacheMsg.delete()
+
+            # Unyike if upvotes are at least 2 greater
+            if down + 1 >= up:
+                self.previousMsgs = [await ctx.send("The yike shall stand")]
+            else:
+                self.yikeLog[user.id] -= amnt
+                self.previousMsgs = [await ctx.send(f"{user.display_name}, you have been forgiven\n"
+                                                    f"you now have {str(self.yikeLog[user.id])}")]
+        elif option == '-a':
+            # Admin option
+            if ctx.message.author.guild_permissions.administrator:
+                self.yikeLog[user.id] -= amnt
+
+                embed = discord.Embed(
+                    title='Admin Unyike',
+                    description=f'{user.display_name} has lost {amnt} {"yike" if amnt == 1 else "yikes"}\n'
+                                f'New total: {str(self.yikeLog[user.id])}'
+                )
+
+                await ctx.send(embed=embed)
+            else:
+                embed = discord.Embed(title='Must be an administrator')
+                await ctx.send(embed=embed)
         else:
-            self.yikeLog[user.id] -= amnt
-            self.previousMsgs = [await ctx.send(f"{user.display_name}, you have been forgiven\n"
-                                                f"you now have {str(self.yikeLog[user.id])}")]
+            embed = discord.Embed(title='Invalid option')
+            await ctx.send(embed=embed)
 
     # Channel check
     async def checkChannel(self, ctx) -> bool:
