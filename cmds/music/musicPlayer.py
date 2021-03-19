@@ -132,8 +132,11 @@ class MusicPlayer(wavelink.Player):
             return tracks[OPTIONS[reaction.emoji]]
 
     async def startPlayback(self, ctx):
-        await self.sendNowPlaying(ctx)
-        await self.play(self.queue.first)
+        while not self.queue.isEmpty():
+            await self.sendNowPlaying(ctx)
+            await self.play(self.queue.first)
+            self.queue.pop()
+
 
     async def skip(self, ctx: Context):
         try:
@@ -165,7 +168,7 @@ class MusicPlayer(wavelink.Player):
 
     async def remove(self, ctx: Context, idx: int):
         if 0 < idx < len(self.queue):
-            track = self.queue.pop()
+            track = self.queue.pop(idx)
 
             embed = discord.Embed(
                 title='Removed:',
