@@ -32,7 +32,9 @@ if __name__ == "__main__":
     curBot.load_extension('cmds.yike')
     curBot.load_extension('cmds.quote')
 
-    curBot.load_extension('cmds.util')
+    # TODO fix the clear command
+    #   Find a better way to do it
+    # curBot.load_extension('cmds.util')
     curBot.load_extension('cmds.music.music')
     # curBot.load_extension('cmds.music-reference')
 

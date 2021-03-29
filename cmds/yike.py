@@ -233,7 +233,12 @@ class Yike(commands.Cog):
         else:
             output = f'{user.display_name} has {self.yikeLog[user.id]}'
 
-        self.previousMsgs = [await ctx.send(output)]
+        embed = discord.Embed(
+            title="Chronicle of Yikes",
+            description=output
+        )
+
+        await ctx.send(embed=embed)
 
     def writeYikeLog(self, file):
         with open(file, mode='w') as f:
