@@ -54,6 +54,12 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     async def on_node_ready(self, node: wavelink.Node):
         self.bot.addAdminLog(f'Wavelink node "{node.identifier}" ready')
 
+    @wavelink.WavelinkMixin.listener("on_track_stuck")
+    @wavelink.WavelinkMixin.listener("on_track_end")
+    @wavelink.WavelinkMixin.listener("on_track_exception")
+    async def onPlayerStop(self, node, payload):
+        await payload.player.advance()
+
     async def setup(self):
         await self.bot.wait_until_ready()
         await self.wl.initiate_node(**self.node)

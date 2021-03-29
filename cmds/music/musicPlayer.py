@@ -62,6 +62,12 @@ class MusicPlayer(wavelink.Player):
 
         self.queue = MusicQueue()
 
+    async def teardown(self):
+        try:
+            await self.destroy()
+        except KeyError:
+            pass
+
     async def sendNowPlaying(self, ctx: Context):
 
         track: wavelink.Track = self.queue.first
@@ -132,11 +138,7 @@ class MusicPlayer(wavelink.Player):
             return tracks[OPTIONS[reaction.emoji]]
 
     async def startPlayback(self, ctx):
-        while not self.queue.isEmpty():
-            await self.sendNowPlaying(ctx)
-            await self.play(self.queue.first)
-            self.queue.pop()
-
+        await self.play(self.queue.first)
 
     async def skip(self, ctx: Context):
         try:
@@ -178,3 +180,9 @@ class MusicPlayer(wavelink.Player):
             await ctx.send(embed=embed)
         else:
             raise commands.UserInputError('Invalid queue position')
+
+    async def advance(self):
+        if not self.queue.isEmpty():
+            self.queue.pop()
+            await self.play(self.queue.first)
+
