@@ -19,7 +19,7 @@ class Yike(commands.Cog):
                      "channels not visible to at least half the server"
     YIKE_DESC = "Adds one or more Yikes to a user"
     YIKE_USAGE = '<user> [amount]'
-    UNYIKE_USAGE = "Removes one or more Yikes from a user"
+    UNYIKE_USAGE = "Removes one or more Yikes from a user, -a option for admin unyike"
     LIST_DESC = 'Lists the yikes for every user or a single user'
 
     def __init__(self, bot: yikeSnake.YikeSnake):
@@ -33,7 +33,7 @@ class Yike(commands.Cog):
 
     def cog_unload(self):
         # TODO handle mid backup cancels?
-        # self.backupYikeLog.cancel()
+        self.backupYikeLog.cancel()
         pass
 
     async def cog_before_invoke(self, ctx):
@@ -84,7 +84,7 @@ class Yike(commands.Cog):
     # YIKE
     @commands.command(name="yike", help=YIKE_DESC, aliases=['y'],
                       brief='_yike <user> [amount]', usage='<user> [amount]')
-    async def yike(self, ctx, user: discord.Member, amnt=1):
+    async def yike(self, ctx, user: discord.Member, amnt=1, option=''):
         # Check the channel for correct users
         if await self.checkChannel(ctx):
             return
@@ -96,60 +96,90 @@ class Yike(commands.Cog):
         self.yikeLog[user.id] += amnt
         self.bot.addAdminLog(f'Yike of {user} initiated by {ctx.author} '
                              f'in channel {ctx.channel.name} : {ctx.message.content}')
-        self.previousMsgs = [await ctx.send(f'{user.display_name}... <:yike:{YIKE_EMOJI_ID}>\n'
-                                            f'You now have {self.yikeLog[user.id]} yikes')]
+
+        embed = discord.Embed(
+            title=f'{user.display_name} now has {self.yikeLog[user.id]} yikes'
+        )
+        self.previousMsgs = [await ctx.send(f'<:yike:{YIKE_EMOJI_ID}>', embed=embed)]
 
     # UNYIKE
     @commands.command(name="unyike", help=UNYIKE_USAGE, aliases=['uy'],
-                      brief='_unyike <user> [amount]', usage='<user> [amount]')
-    async def unYike(self, ctx, user: discord.Member, amnt=1):
-        if await self.checkChannel(ctx):
-            return
-
+                      brief='_unyike <user> [amount] [option]', usage='<user> [amount] [option]')
+    async def unYike(self, ctx, user: discord.Member, amnt: typing.Optional[int] = 1, option=''):
         # Check for zero yikes
         if self.yikeLog[user.id] == 0:
-            self.previousMsgs = [await ctx.send("NO NEGATIVE YIKES\nYou cheeky monkey")]
+            self.previousMsgs = [await ctx.send(embed=discord.Embed(title="NO NEGATIVE YIKES\nYou cheeky monkey"))]
             return
 
-        # Send voter yikes
-        voter: discord.Message = await ctx.send("The legion shall decide your fate")
+        # TODO update voter to use an embed
 
-        await voter.add_reaction(THUMBS_UP)
-        await voter.add_reaction(THUMBS_DOWN)
+        if option == '':
+            if await self.checkChannel(ctx):
+                return
 
-        await sleep(self.bot.waitTime)
+            # Send voter yikes
+            embed = discord.Embed(title='The legion shall decide your fate')
+            voter: discord.Message = await ctx.send(embed=embed)
 
-        cacheMsg: discord.Message = discord.utils.get(self.bot.cached_messages, id=voter.id)
-        up = 0
-        down = 0
-        upVoters = ''
-        downVoters = ''
+            await voter.add_reaction(THUMBS_UP)
+            await voter.add_reaction(THUMBS_DOWN)
 
-        # Count reactions
-        for x in cacheMsg.reactions:
-            if x.emoji == THUMBS_UP:
-                up = x.count
-                users = await x.users().flatten()
-                for u in users:
-                    upVoters += u.name + '  '
-            elif x.emoji == THUMBS_DOWN:
-                down = x.count
-                users = await x.users().flatten()
-                for u in users:
-                    downVoters += u.name + '  '
+            await sleep(self.bot.waitTime)
 
-        self.bot.addAdminLog(f'Unyike of {user} initiated by {ctx.author} in channel "{ctx.channel.name}"'
-                             f' : {ctx.message.content}\n'
-                             f'\tUpVotes: {upVoters}\n\tDownVotes: {downVoters}')
-        await cacheMsg.delete()
+            cacheMsg: discord.Message = discord.utils.get(self.bot.cached_messages, id=voter.id)
+            up = 0
+            down = 0
+            upVoters = ''
+            downVoters = ''
 
-        # Unyike if upvotes are at least 2 greater
-        if down + 1 >= up:
-            self.previousMsgs = [await ctx.send("The yike shall stand")]
+            # Count reactions
+            for x in cacheMsg.reactions:
+                if x.emoji == THUMBS_UP:
+                    up = x.count
+                    users = await x.users().flatten()
+                    for u in users:
+                        upVoters += u.name + '  '
+                elif x.emoji == THUMBS_DOWN:
+                    down = x.count
+                    users = await x.users().flatten()
+                    for u in users:
+                        downVoters += u.name + '  '
+
+            self.bot.addAdminLog(f'Unyike of {user} initiated by {ctx.author} in channel "{ctx.channel.name}"'
+                                 f' : {ctx.message.content}\n'
+                                 f'\tUpVotes: {upVoters}\n\tDownVotes: {downVoters}')
+            await cacheMsg.delete()
+
+            # Unyike if upvotes are at least 2 greater
+            if down + 1 >= up:
+                self.previousMsgs = [await ctx.send("The yike shall stand")]
+            else:
+                self.yikeLog[user.id] -= amnt
+                cur = self.yikeLog[user.id]
+                embed = discord.Embed(
+                    title=f'{user.display_name}, you have been forgiven',
+                    description=f'You now have {str(cur)} {"yike" if cur == 1 else "yikes"}'
+                )
+                self.previousMsgs = [await ctx.send(embed=embed)]
+
+        elif option == '-a':
+            # Admin option
+            if ctx.message.author.guild_permissions.administrator:
+                self.yikeLog[user.id] -= amnt
+
+                embed = discord.Embed(
+                    title='Admin Unyike',
+                    description=f'{user.display_name} has lost {amnt} {"yike" if amnt == 1 else "yikes"}\n'
+                                f'New total: {str(self.yikeLog[user.id])}'
+                )
+
+                await ctx.send(embed=embed)
+            else:
+                embed = discord.Embed(title='Must be an administrator')
+                await ctx.send(embed=embed)
         else:
-            self.yikeLog[user.id] -= amnt
-            self.previousMsgs = [await ctx.send(f"{user.display_name}, you have been forgiven\n"
-                                                f"you now have {str(self.yikeLog[user.id])}")]
+            embed = discord.Embed(title='Invalid option')
+            await ctx.send(embed=embed)
 
     # Channel check
     async def checkChannel(self, ctx) -> bool:
@@ -166,9 +196,40 @@ class Yike(commands.Cog):
     async def list(self, ctx, user: typing.Optional[discord.Member] = None):
         output = ''
 
+        class TempItem:
+            def __init__(self, name: str, _amnt: int):
+                self.name = name
+                self.amnt = _amnt
+
+            def __gt__(self, other):
+                if self.amnt > other.amnt:
+                    return False
+
+                if self.amnt < other.amnt:
+                    return True
+
+                return self.name > other.name
+
+            def __lt__(self, other):
+                if self.amnt < other.amnt:
+                    return False
+
+                if self.amnt > other.amnt:
+                    return True
+
+                return self.name < other.name
+
+
+        temp = []
         if user is None:
             for m in ctx.guild.members:
-                output += f'{m.display_name}: {self.yikeLog[m.id]}\n'
+                amnt = self.yikeLog[m.id]
+                if amnt > 0:
+                    temp.append(TempItem(m.display_name, amnt))
+
+            temp.sort()
+            for m in temp:
+                output += f'{m.name}: {m.amnt}\n'
         else:
             output = f'{user.display_name} has {self.yikeLog[user.id]}'
 
