@@ -3,7 +3,8 @@
 from discord.ext import commands
 import discord
 import yikeSnake
-
+import sys
+import asyncio
 
 class Admin(commands.Cog):
 
@@ -18,6 +19,13 @@ class Admin(commands.Cog):
         await ctx.message.delete()
         await self.bot.change_presence(status=discord.Status.offline)
 
+        for x in self.bot.extensions.copy():
+            if x != 'cmds.admin':
+                self.bot.unload_extension(x)
+
+        self.bot.loop.call_soon(self.shutdown)
+
+    def shutdown(self):
         self.bot.loop.stop()
 
 

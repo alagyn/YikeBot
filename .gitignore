@@ -3,6 +3,7 @@ __pycache__
 */__pycache__
 .env
 dat
-/logs/
-/lavalink/
+logs
 /cmds/music-reference.py
+/lavalink/
+
