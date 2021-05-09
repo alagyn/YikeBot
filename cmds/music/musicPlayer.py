@@ -4,6 +4,7 @@ from discord.ext.commands import Context
 import discord
 import typing
 import asyncio
+from consts import MUSIC_LEAVE_TIME
 
 OPTIONS = {
     "1️⃣": 0,
@@ -61,6 +62,7 @@ class MusicPlayer(wavelink.Player):
         super().__init__(*args, **kwargs)
 
         self.queue = MusicQueue()
+        self.currentTimer = None
 
     async def teardown(self):
         try:
@@ -77,7 +79,6 @@ class MusicPlayer(wavelink.Player):
         )
 
         embed.set_thumbnail(url=track.thumb)
-
         await ctx.send(embed=embed)
 
     async def addTrack(self, ctx: Context, tracks):
@@ -138,18 +139,8 @@ class MusicPlayer(wavelink.Player):
             return tracks[OPTIONS[reaction.emoji]]
 
     async def startPlayback(self, ctx):
+        await self.sendNowPlaying(ctx)
         await self.play(self.queue.first)
-
-    async def skip(self, ctx: Context):
-        try:
-            self.queue.pop()
-        except IndexError:
-            pass
-
-        if len(self.queue) > 0:
-            await self.startPlayback(ctx)
-        else:
-            await self.stop()
 
     async def printQueue(self, ctx: Context):
         if self.queue.isEmpty():
@@ -182,7 +173,24 @@ class MusicPlayer(wavelink.Player):
             raise commands.UserInputError('Invalid queue position')
 
     async def advance(self):
+        await self.stop()
         if not self.queue.isEmpty():
             self.queue.pop()
-            await self.play(self.queue.first)
+            if self.queue.isEmpty():
+                await self.startTimeout()
+            else:
+                await self.play(self.queue.first)
+
+    async def startTimeout(self):
+        if self.currentTimer is not None:
+            self.currentTimer.cancel()
+        self.currentTimer = asyncio.create_task(self.waitForTimeout())
+
+    async def waitForTimeout(self):
+        await asyncio.sleep(MUSIC_LEAVE_TIME)
+        if not self.is_playing:
+            await self.destroy()
+
+    def isEmpty(self):
+        return self.queue.isEmpty()
 

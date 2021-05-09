@@ -46,6 +46,8 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         bot.loop.create_task(self.setup())
 
+        self.timeoutCount = 0
+
     async def cog_command_error(self, ctx: Context, error):
         if isinstance(error, commands.UserInputError):
             await ctx.send(str(error))
@@ -54,6 +56,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     async def on_node_ready(self, node: wavelink.Node):
         self.bot.addAdminLog(f'Wavelink node "{node.identifier}" ready')
 
+    # TODO have error functions?
     @wavelink.WavelinkMixin.listener("on_track_stuck")
     @wavelink.WavelinkMixin.listener("on_track_end")
     @wavelink.WavelinkMixin.listener("on_track_exception")
@@ -133,7 +136,9 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @music.command(name='skip', aliases=['next', 'n'], help=SKIP_HELP, brief=SKIP_BRIEF)
     async def skip(self, ctx: commands.Context):
         player = self.getPlayer(ctx)
-        await player.skip(ctx)
+        await player.advance()
+        if not player.queue.isEmpty():
+            await player.sendNowPlaying(ctx)
 
     PAUSE_HELP = 'Pauses the current playback'
 
