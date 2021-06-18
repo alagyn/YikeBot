@@ -63,6 +63,7 @@ class MusicPlayer(wavelink.Player):
 
         self.queue = MusicQueue()
         self.currentTimer = None
+        self.currentCtx = None
 
     async def teardown(self):
         try:
@@ -102,7 +103,7 @@ class MusicPlayer(wavelink.Player):
 
             if len(self.queue) != 1:
                 embed = discord.Embed(
-                    title='Added:',
+                    title='Added To Queue:',
                     description=track.title
                 )
                 await ctx.send(embed=embed)
@@ -139,6 +140,17 @@ class MusicPlayer(wavelink.Player):
             return tracks[OPTIONS[reaction.emoji]]
 
     async def startPlayback(self, ctx):
+        if self.currentCtx is None:
+            self.currentCtx = ctx
+
+        if self.currentTimer is not None:
+            self.currentTimer.cancel()
+            self.currentTimer = None
+
+        if self.queue.isEmpty():
+            print('Err: Queue is empty')
+            return
+
         await self.sendNowPlaying(ctx)
         await self.play(self.queue.first)
 
@@ -173,13 +185,20 @@ class MusicPlayer(wavelink.Player):
             raise commands.UserInputError('Invalid queue position')
 
     async def advance(self):
-        await self.stop()
-        if not self.queue.isEmpty():
+        try:
             self.queue.pop()
-            if self.queue.isEmpty():
-                await self.startTimeout()
-            else:
-                await self.play(self.queue.first)
+        except IndexError:
+            # TODO raise error?
+            pass
+
+        if self.queue.isEmpty():
+            await self.startTimeout()
+        else:
+            if self.currentCtx is None:
+                # TODO raise error?
+                pass
+
+            await self.startPlayback(self.currentCtx)
 
     async def startTimeout(self):
         if self.currentTimer is not None:

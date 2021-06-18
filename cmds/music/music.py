@@ -86,6 +86,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     JOIN_HELP = 'Connects the bot to your current voice channel'
 
     def getPlayer(self, ctx: Context) -> MusicPlayer:
+        # noinspection PyTypeChecker
         return self.wl.get_player(ctx.guild.id, cls=MusicPlayer, context=ctx)
 
     @music.command(name='join', aliases=['j', 'connect', 'c'], help=JOIN_HELP)
@@ -136,9 +137,15 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @music.command(name='skip', aliases=['next', 'n'], help=SKIP_HELP, brief=SKIP_BRIEF)
     async def skip(self, ctx: commands.Context):
         player = self.getPlayer(ctx)
-        await player.advance()
-        if not player.queue.isEmpty():
-            await player.sendNowPlaying(ctx)
+        if player.queue.isEmpty():
+            embed = discord.Embed(
+                title='Queue Is Empty'
+            )
+
+            await ctx.send(embed=embed)
+        else:
+            # Calling stop will activate the onPlayerStop even handler above
+            await player.stop()
 
     PAUSE_HELP = 'Pauses the current playback'
 

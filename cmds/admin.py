@@ -6,6 +6,7 @@ import yikeSnake
 import sys
 import asyncio
 
+
 class Admin(commands.Cog):
 
     def __init__(self, bot):
@@ -27,7 +28,6 @@ class Admin(commands.Cog):
 
     def shutdown(self):
         self.bot.loop.stop()
-
 
     @commands.command(name='reset', hidden=True, aliases=['r'])
     @commands.is_owner()
