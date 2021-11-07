@@ -51,11 +51,6 @@ class Yike(commands.Cog):
         if isinstance(error, commands.UserInputError):
             self.previousMsgs = [await ctx.send_help(ctx.command)]
 
-    @commands.Cog.listener(name='on_member_join')
-    async def on_member_join(self, member: discord.Member):
-        self.bot.addAdminLog(f"Member joined {member.nick}")
-        self.yikeLog.update({member.id: 0})
-
     @commands.Cog.listener(name='on_ready')
     async def on_ready(self):
         # Init yikeLog
@@ -93,6 +88,9 @@ class Yike(commands.Cog):
             self.previousMsgs = [await ctx.send("Invalid amount")]
             return
 
+        if user.id not in self.yikeLog:
+            self.yikeLog[user.id] = 0
+
         self.yikeLog[user.id] += amnt
         self.bot.addAdminLog(f'Yike of {user} initiated by {ctx.author} '
                              f'in channel {ctx.channel.name} : {ctx.message.content}')
@@ -107,7 +105,7 @@ class Yike(commands.Cog):
                       brief='_unyike <user> [amount] [option]', usage='<user> [amount] [option]')
     async def unYike(self, ctx, user: discord.Member, amnt: typing.Optional[int] = 1, option=''):
         # Check for zero yikes
-        if self.yikeLog[user.id] == 0:
+        if user.id in self.yikeLog and self.yikeLog[user.id] == 0:
             self.previousMsgs = [await ctx.send(embed=discord.Embed(title="NO NEGATIVE YIKES\nYou cheeky monkey"))]
             return
 
