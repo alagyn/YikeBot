@@ -1,10 +1,13 @@
+import math
+
 import wavelink
 from discord.ext import commands
 from discord.ext.commands import Context
 import discord
 import typing
 import asyncio
-from consts import MUSIC_LEAVE_TIME
+from consts import MUSIC_LEAVE_TIME, SHUFFLE_ICON
+from random import random
 
 OPTIONS = {
     "1️⃣": 0,
@@ -18,9 +21,13 @@ OPTIONS = {
 class MusicQueue:
     def __init__(self):
         self.queue = []
+        self.curIdx = 0
 
     def __len__(self):
         return len(self.queue)
+
+    def remaining(self) -> int:
+        return len(self.queue) - self.curIdx - 1
 
     def __iter__(self):
         return self.queue.__iter__()
@@ -43,12 +50,23 @@ class MusicQueue:
     def isEmpty(self):
         return len(self.queue) == 0
 
-    @property
-    def first(self) -> wavelink.Track:
-        if len(self.queue) > 0:
-            return self.queue[0]
-        else:
-            raise IndexError('Cannot get first, queue is empty')
+    def hasCurrent(self) -> bool:
+        return 0 <= self.curIdx < len(self.queue)
+
+    def shuffle(self):
+        if self.hasNext():
+            for i in reversed(range(self.curIdx + 2, len(self.queue))):
+                x = math.floor(random() * i + 1)
+                self.queue[i], self.queue[x] = self.queue[x], self.queue[i]
+
+    def hasNext(self) -> bool:
+        return self.curIdx + 1 < len(self.queue)
+
+    def next(self):
+        self.curIdx += 1
+
+    def current(self) -> wavelink.Track:
+        return self.queue[self.curIdx]
 
     def pop(self, idx=0) -> wavelink.Track:
         if len(self.queue) > 0:
@@ -65,6 +83,12 @@ class MusicPlayer(wavelink.Player):
         self.currentTimer = None
         self.currentCtx = None
 
+        self.skipFlag = False
+
+        # keeping track of is_playing myself because wavelink broke I guess
+        self.actually_playing = False
+
+
     async def teardown(self):
         try:
             await self.destroy()
@@ -73,7 +97,7 @@ class MusicPlayer(wavelink.Player):
 
     async def sendNowPlaying(self, ctx: Context):
 
-        track: wavelink.Track = self.queue.first
+        track: wavelink.Track = self.queue.current()
         embed = discord.Embed(
             title="Now Playing",
             description=f'{track.title}'
@@ -101,14 +125,15 @@ class MusicPlayer(wavelink.Player):
 
             self.queue + track
 
-            if len(self.queue) != 1:
+            if self.queue.remaining() > 0 or self.actually_playing:
                 embed = discord.Embed(
                     title='Added To Queue:',
                     description=track.title
                 )
                 await ctx.send(embed=embed)
 
-        if not self.is_playing and not self.queue.isEmpty():
+        # print('playing?', self.actually_playing)
+        if not self.is_paused and not self.actually_playing:
             await self.startPlayback(ctx)
 
     async def chooseTrack(self, ctx: Context, tracks: typing.List[wavelink.Track]) -> \
@@ -140,19 +165,26 @@ class MusicPlayer(wavelink.Player):
             return tracks[OPTIONS[reaction.emoji]]
 
     async def startPlayback(self, ctx):
-        if self.currentCtx is None:
-            self.currentCtx = ctx
+        self.currentCtx = ctx
 
         if self.currentTimer is not None:
             self.currentTimer.cancel()
             self.currentTimer = None
 
-        if self.queue.isEmpty():
-            print('Err: Queue is empty')
-            return
+        self.actually_playing = False
 
-        await self.sendNowPlaying(ctx)
-        await self.play(self.queue.first)
+        try:
+            # print(f'Cur IDX: {self.queue.curIdx}')
+            # print(f'Playing : {self.queue.current().title}')
+            await self.play(self.queue.current())
+            await self.sendNowPlaying(ctx)
+
+            self.actually_playing = True
+
+        except IndexError:
+            await self.startTimeout()
+            # print('end of queue')
+
 
     async def printQueue(self, ctx: Context):
         if self.queue.isEmpty():
@@ -162,12 +194,14 @@ class MusicPlayer(wavelink.Player):
         else:
             embed = discord.Embed(
                 title='Now Playing',
-                description=f'{self.queue.first.title}'
+                description=f'{self.queue.current().title}'
             )
 
-            if len(self.queue) > 1:
+            # print('Remaining:', self.queue.remaining())
+            if self.queue.remaining() > 0:
+                nextQ = list(enumerate(self.queue))[self.queue.curIdx + 1:self.queue.curIdx + 11]
                 embed.add_field(name='Play Queue',
-                                value=f''.join(f'{i + 1}: "{x.title}"\n' for i, x in enumerate(self.queue[1:])))
+                                value=f''.join(f'{i}: "{x.title}"\n' for i, x in nextQ))
 
         await ctx.send(embed=embed)
 
@@ -184,21 +218,27 @@ class MusicPlayer(wavelink.Player):
         else:
             raise commands.UserInputError('Invalid queue position')
 
-    async def advance(self):
-        try:
-            self.queue.pop()
-        except IndexError:
-            # TODO raise error?
-            pass
+    async def shuffle(self, ctx: Context):
+        self.queue.shuffle()
+        await ctx.message.add_reaction(SHUFFLE_ICON)
 
-        if self.queue.isEmpty():
-            await self.startTimeout()
+
+    async def advance(self, ctx: Context, manual: bool):
+        # Hacked, onplayerstop will be called when a new song plays
+        # This prevents this func from running twice when a user manually skips a track
+        if not manual and self.skipFlag:
+            self.skipFlag = False
+            return
+        elif manual:
+            self.skipFlag = True
+            await self.stop()
+
+        self.queue.next()
+        if ctx is not None:
+            await self.startPlayback(ctx)
         else:
-            if self.currentCtx is None:
-                # TODO raise error?
-                pass
-
             await self.startPlayback(self.currentCtx)
+
 
     async def startTimeout(self):
         if self.currentTimer is not None:
@@ -207,9 +247,10 @@ class MusicPlayer(wavelink.Player):
 
     async def waitForTimeout(self):
         await asyncio.sleep(MUSIC_LEAVE_TIME)
-        if not self.is_playing:
+        if not self.actually_playing:
             await self.destroy()
 
     def isEmpty(self):
         return self.queue.isEmpty()
+
 

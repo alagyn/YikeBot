@@ -5,6 +5,7 @@ from discord.ext import commands
 from utils import timeUtils
 import sys
 # import asyncio
+import traceback
 
 from consts import ERROR_OUTPUT_MESSAGE
 
@@ -63,7 +64,9 @@ class YikeSnake(discord.ext.commands.Bot):
             await ctx.send(str(error))
         elif not isinstance(error, commands.UserInputError):
             self.previousMessages = [await ctx.send(ERROR_OUTPUT_MESSAGE)]
-            print(f'{error}\n\t{ctx.message.content}', file=sys.stderr)
+            tb = traceback.TracebackException.from_exception(error).format()
+            tb = ''.join(tb)
+            print(f'{error}\n\t{ctx.message.content}\n{tb}', file=sys.stderr)
 
     @staticmethod
     async def on_command(ctx: commands.Context):

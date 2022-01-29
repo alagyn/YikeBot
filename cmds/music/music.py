@@ -16,6 +16,8 @@ from consts import PAUSE_ICON, PLAY_ICON, THUMBS_UP
 URL_REGEX = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
 URL_PATTERN = re.compile(URL_REGEX)
 
+SEEK_PATTERN = re.compile(r'(?P<delta>[+-])?((?P<min>\d*):(?P<sec>\d{2})|(?P<allsec>\d+))')
+
 
 class NotInVoice(commands.CommandError):
     pass
@@ -61,7 +63,8 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @wavelink.WavelinkMixin.listener("on_track_end")
     @wavelink.WavelinkMixin.listener("on_track_exception")
     async def onPlayerStop(self, node, payload):
-        await payload.player.advance()
+        # print('onPlayerStop')
+        await payload.player.advance(None, False)
 
     async def setup(self):
         await self.bot.wait_until_ready()
@@ -137,15 +140,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @music.command(name='skip', aliases=['next', 'n'], help=SKIP_HELP, brief=SKIP_BRIEF)
     async def skip(self, ctx: commands.Context):
         player = self.getPlayer(ctx)
-        if player.queue.isEmpty():
-            embed = discord.Embed(
-                title='Queue Is Empty'
-            )
-
-            await ctx.send(embed=embed)
-        else:
-            # Calling stop will activate the onPlayerStop even handler above
-            await player.stop()
+        await player.advance(ctx, True)
 
     PAUSE_HELP = 'Pauses the current playback'
 
@@ -174,8 +169,63 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     async def queue(self, ctx: commands.Context):
         await self.getPlayer(ctx).printQueue(ctx)
 
-    # TODO remove cmd info
+    REMOVE_HELP = 'Removes the given item from the queue'
 
-    @music.command(name='remove', aliases=['rm'])
+    @music.command(name='remove', aliases=['rm'], help=REMOVE_HELP)
     async def remove(self, ctx: commands.Context, idx: typing.Optional[int] = 0):
         await self.getPlayer(ctx).remove(ctx, idx)
+
+    SHUFFLE_HELP = 'Shuffles the unplayed queue'
+
+    @music.command(name='shuffle', aliases=['shuf'], help=SHUFFLE_HELP)
+    async def shuffle(self, ctx: commands.Context):
+        await self.getPlayer(ctx).shuffle(ctx)
+
+    JUMP_HELP = 'Jumps to a specific item in the queue'
+
+    @music.command(name='jump', help=JUMP_HELP)
+    async def jump(self, ctx: commands.Context, idx: int):
+        player = self.getPlayer(ctx)
+
+        if 0 <= idx < len(player.queue):
+            player.queue.curIdx = idx - 1
+            await player.advance(ctx, True)
+        else:
+            # TODO error?
+            pass
+
+    SEEK_HELP = 'Seeks to a specific timestamp or time delta'
+
+    @music.command(name='seek', help=SEEK_HELP)
+    async def seek(self, ctx: commands.Context, seektime: str):
+
+        player = self.getPlayer(ctx)
+
+        if not player.actually_playing:
+            return
+
+        match = SEEK_PATTERN.fullmatch(seektime.strip())
+        if match is None:
+            raise commands.UserInputError("Invalid time format, try [+-][min:]sec")
+
+        mins = match.group('min')
+        if mins is not None:
+            seekpos = (60 * int(mins) + int(match.group('sec'))) * 1000
+        else:
+            seekpos = int(match.group('allsec')) * 1000
+
+
+        curpos = int(player.position)
+
+        delta = match.group('delta')
+        if delta is not None:
+
+            if delta == '+':
+                seekpos += curpos
+            else:
+                seekpos = curpos - seekpos
+
+        seekpos = max(0, seekpos)
+
+        await player.seek(seekpos)
+        await ctx.message.add_reaction(THUMBS_UP)
