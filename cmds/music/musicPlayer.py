@@ -248,6 +248,7 @@ class MusicPlayer(wavelink.Player):
     async def waitForTimeout(self):
         await asyncio.sleep(MUSIC_LEAVE_TIME)
         if not self.actually_playing:
+            print('VC Timeout activated')
             await self.destroy()
 
     def isEmpty(self):

@@ -10,6 +10,10 @@ import traceback
 from consts import ERROR_OUTPUT_MESSAGE
 
 
+def getLogTimeStr():
+    return timeUtils.readDate(timeUtils.getCurrentTime())
+
+
 class YikeSnake(discord.ext.commands.Bot):
 
     def __init__(self, logFile, backupFolder, waitTime, backupTime):
@@ -35,9 +39,8 @@ class YikeSnake(discord.ext.commands.Bot):
         self.backupTime = backupTime
         self.needToExit = False
 
-
     def addAdminLog(self, message: str):
-        output = f'{timeUtils.readDate(timeUtils.getCurrentTime())}: {message}'
+        output = f'{getLogTimeStr()}: {message}'
         if self.outputFile is not None:
             with open(self.outputFile, mode='a') as log:
                 log.write(f'{output}\n')
@@ -66,7 +69,7 @@ class YikeSnake(discord.ext.commands.Bot):
             self.previousMessages = [await ctx.send(ERROR_OUTPUT_MESSAGE)]
             tb = traceback.TracebackException.from_exception(error).format()
             tb = ''.join(tb)
-            print(f'{error}\n\t{ctx.message.content}\n{tb}', file=sys.stderr)
+            print(f'{getLogTimeStr()}:\n\t{error}\n\t{ctx.message.content}\n{tb}', file=sys.stderr)
 
     @staticmethod
     async def on_command(ctx: commands.Context):
@@ -74,4 +77,3 @@ class YikeSnake(discord.ext.commands.Bot):
 
     async def on_command_completion(self, ctx: commands.Context):
         pass
-
