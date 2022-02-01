@@ -105,7 +105,10 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
     @music.command(name='leave', aliases=['l', 'disconnect', 'dc', 'stop'], help=LEAVE_HELP, brief=LEAVE_BRIEF)
     async def leave(self, ctx: Context):
-        await self.getPlayer(ctx).destroy()
+        player = self.getPlayer(ctx)
+        player.cancelTimer()
+        await player.destroy()
+
 
     PLAY_HELP = 'Plays a YouTube url or search query. ' \
                 'Calling this command with no arguments emulates the resume command'

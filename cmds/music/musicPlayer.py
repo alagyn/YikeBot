@@ -164,12 +164,15 @@ class MusicPlayer(wavelink.Player):
             await msg.delete()
             return tracks[OPTIONS[reaction.emoji]]
 
-    async def startPlayback(self, ctx):
-        self.currentCtx = ctx
-
+    def cancelTimer(self):
         if self.currentTimer is not None:
             self.currentTimer.cancel()
             self.currentTimer = None
+
+    async def startPlayback(self, ctx):
+        self.currentCtx = ctx
+
+        self.cancelTimer()
 
         self.actually_playing = False
 
@@ -184,7 +187,6 @@ class MusicPlayer(wavelink.Player):
         except IndexError:
             await self.startTimeout()
             # print('end of queue')
-
 
     async def printQueue(self, ctx: Context):
         if self.queue.isEmpty():
@@ -222,7 +224,6 @@ class MusicPlayer(wavelink.Player):
         self.queue.shuffle()
         await ctx.message.add_reaction(SHUFFLE_ICON)
 
-
     async def advance(self, ctx: Context, manual: bool):
         # Hacked, onplayerstop will be called when a new song plays
         # This prevents this func from running twice when a user manually skips a track
@@ -239,7 +240,6 @@ class MusicPlayer(wavelink.Player):
         else:
             await self.startPlayback(self.currentCtx)
 
-
     async def startTimeout(self):
         if self.currentTimer is not None:
             self.currentTimer.cancel()
@@ -248,10 +248,7 @@ class MusicPlayer(wavelink.Player):
     async def waitForTimeout(self):
         await asyncio.sleep(MUSIC_LEAVE_TIME)
         if not self.actually_playing:
-            print('VC Timeout activated')
             await self.destroy()
 
     def isEmpty(self):
         return self.queue.isEmpty()
-
-
