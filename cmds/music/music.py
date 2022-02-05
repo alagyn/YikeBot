@@ -109,7 +109,6 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         player.cancelTimer()
         await player.destroy()
 
-
     PLAY_HELP = 'Plays a YouTube url or search query. ' \
                 'Calling this command with no arguments emulates the resume command'
     PLAY_BRIEF = 'Plays a url or search query'
@@ -217,7 +216,6 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         else:
             seekpos = int(match.group('allsec')) * 1000
 
-
         curpos = int(player.position)
 
         delta = match.group('delta')
@@ -233,7 +231,9 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await player.seek(seekpos)
         await ctx.message.add_reaction(THUMBS_UP)
 
-    @music.command(name='loop')
+    LOOP_HELP = 'Toggles music looping. Current will play until a user manually skips it.'
+
+    @music.command(name='loop', help=LOOP_HELP)
     async def loop(self, ctx: commands.Context):
         p = self.getPlayer(ctx)
         if p is None:
