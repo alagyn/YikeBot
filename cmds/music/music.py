@@ -232,3 +232,15 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         await player.seek(seekpos)
         await ctx.message.add_reaction(THUMBS_UP)
+
+    @music.command(name='loop')
+    async def loop(self, ctx: commands.Context):
+        p = self.getPlayer(ctx)
+        if p is None:
+            return
+        p.loop = not p.loop
+
+        if p.loop:
+            await ctx.send('Looping Started')
+        else:
+            await ctx.send('Looping Ended')

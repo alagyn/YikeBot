@@ -88,6 +88,8 @@ class MusicPlayer(wavelink.Player):
         # keeping track of is_playing myself because wavelink broke I guess
         self.actually_playing = False
 
+        self.loop = False
+
 
     async def teardown(self):
         try:
@@ -234,7 +236,8 @@ class MusicPlayer(wavelink.Player):
             self.skipFlag = True
             await self.stop()
 
-        self.queue.next()
+        if not self.loop or (self.loop and manual):
+            self.queue.next()
         if ctx is not None:
             await self.startPlayback(ctx)
         else:
