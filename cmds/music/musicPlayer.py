@@ -76,6 +76,8 @@ class MusicQueue:
 
 
 class MusicPlayer(wavelink.Player):
+    # IDGEN = 0
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -87,6 +89,10 @@ class MusicPlayer(wavelink.Player):
 
         # keeping track of is_playing myself because wavelink broke I guess
         self.actually_playing = False
+
+        # self.id = MusicPlayer.IDGEN
+        # MusicPlayer.IDGEN += 1
+        # print('constr:', self.id)
 
         self.loop = False
 
@@ -227,6 +233,9 @@ class MusicPlayer(wavelink.Player):
         await ctx.message.add_reaction(SHUFFLE_ICON)
 
     async def advance(self, ctx: Context, manual: bool):
+        if not self.is_connected:
+            return
+
         # Hacked, onplayerstop will be called when a new song plays
         # This prevents this func from running twice when a user manually skips a track
         if not manual and self.skipFlag:

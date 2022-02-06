@@ -27,6 +27,12 @@ def setup(bot: YikeSnake):
     bot.add_cog(Music(bot))
 
 
+async def killPlayer(player):
+    player.cancelTimer()
+    player.loop = False
+    await player.destroy()
+
+
 class Music(commands.Cog, wavelink.WavelinkMixin):
     def __init__(self, bot: YikeSnake):
         self.bot = bot
@@ -50,6 +56,8 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         self.timeoutCount = 0
 
+        self.bot.listen('on_voice_state_update')(self.on_voice_state_update)
+
     async def cog_command_error(self, ctx: Context, error):
         if isinstance(error, commands.UserInputError):
             await ctx.send(str(error))
@@ -66,6 +74,15 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         # print('onPlayerStop')
         await payload.player.advance(None, False)
 
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState,
+                                    after: discord.VoiceState):
+        if member.id == self.bot.user.id:
+            if after.channel is None:
+                gid = before.channel.guild.id
+                if gid in self.wl.players:
+                    player = self.getPlayerByID(gid)
+                    await killPlayer(player)
+
     async def setup(self):
         await self.bot.wait_until_ready()
         await self.wl.initiate_node(**self.node)
@@ -76,6 +93,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     async def close(self):
         await self.wl.destroy_node(identifier=self.node['identifier'])
         for k, v in self.wl.players.items():
+            v.cancelTimer()
             v.destroy()
         del self.wl
 
@@ -87,6 +105,10 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await self.play(ctx, query=args)
 
     JOIN_HELP = 'Connects the bot to your current voice channel'
+
+    def getPlayerByID(self, guildID) -> MusicPlayer:
+        # noinspection PyTypeChecker
+        return self.wl.get_player(guildID, cls=MusicPlayer)
 
     def getPlayer(self, ctx: Context) -> MusicPlayer:
         # noinspection PyTypeChecker
@@ -106,8 +128,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @music.command(name='leave', aliases=['l', 'disconnect', 'dc', 'stop'], help=LEAVE_HELP, brief=LEAVE_BRIEF)
     async def leave(self, ctx: Context):
         player = self.getPlayer(ctx)
-        player.cancelTimer()
-        await player.destroy()
+        await killPlayer(player)
 
     PLAY_HELP = 'Plays a YouTube url or search query. ' \
                 'Calling this command with no arguments emulates the resume command'
